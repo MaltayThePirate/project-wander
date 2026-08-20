@@ -65,6 +65,16 @@ group :test do
   gem "selenium-webdriver"
 end
 
+# Gemfile
+group :development do
+  gem "ruby-lsp", require: false
+end
+
+group :development do
+  gem "rubocop", require: false
+  gem "rubocop-rails", require: false  # Rails-specific cop rules
+end
+
 # CORS enable
 gem "rack-cors"
 
