@@ -65,4 +65,8 @@ group :test do
   gem "selenium-webdriver"
 end
 
+# CORS enable
 gem "rack-cors"
+
+# Postgres GIS Adapter
+gem "activerecord-postgis-adapter"

@@ -56,6 +56,9 @@ GEM
       activemodel (= 8.1.3.1)
       activesupport (= 8.1.3.1)
       timeout (>= 0.4.0)
+    activerecord-postgis-adapter (11.1.1)
+      activerecord (~> 8.1.0)
+      rgeo-activerecord (~> 8.1.0)
     activestorage (8.1.3.1)
       actionpack (= 8.1.3.1)
       activejob (= 8.1.3.1)
@@ -285,6 +288,10 @@ GEM
     reline (0.7.0)
       io-console (~> 0.5)
     rexml (3.4.4)
+    rgeo (3.1.0)
+    rgeo-activerecord (8.1.0)
+      activerecord (>= 8.1, < 8.2)
+      rgeo (>= 3.0)
     rubocop (1.89.0)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -392,6 +399,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  activerecord-postgis-adapter
   bootsnap
   brakeman
   bundler-audit
