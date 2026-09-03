@@ -10,17 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_19_021311) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_03_032011) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
 
-  create_table "spatial_ref_sys", primary_key: "srid", id: :integer, default: nil, force: :cascade do |t|
-    t.string "auth_name", limit: 256
-    t.integer "auth_srid"
-    t.string "proj4text", limit: 2048
-    t.string "srtext", limit: 2048
-    t.check_constraint "srid > 0 AND srid <= 998999", name: "spatial_ref_sys_srid_check"
+  create_table "spots", force: :cascade do |t|
+    t.string "address"
+    t.datetime "created_at", null: false
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}, null: false
+    t.string "name", null: false
+    t.string "source_provider", null: false
+    t.string "source_url", null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["trip_id"], name: "index_spots_on_trip_id"
+    t.index ["user_id"], name: "index_spots_on_user_id"
   end
 
   create_table "trip_memberships", force: :cascade do |t|
@@ -49,6 +55,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_021311) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "spots", "trips"
+  add_foreign_key "spots", "users"
   add_foreign_key "trip_memberships", "trips"
   add_foreign_key "trip_memberships", "users"
 end
