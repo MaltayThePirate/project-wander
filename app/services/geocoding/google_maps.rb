@@ -59,7 +59,7 @@ module Geocoding
       uri.query = URI.encode_www_form(
         input: query,
         inputtype: "textquery",
-        fields: "name,formatted_address,geometry",
+        fields: "name,formatted_address,geometry,photos",
         key: Rails.application.credentials.google_maps[:geocoding_api_key]
       )
 
@@ -76,12 +76,14 @@ module Geocoding
       raise Geocoding::Error, "no results returned" if result.nil?
 
       location = result.dig("geometry", "location")
+      photo_reference = result.dig("photos", 0, "photo_reference")
 
       Geocoding::Result.new(
         name: result["name"],
         address: result["formatted_address"],
         latitude: location["lat"],
-        longitude: location["lng"]
+        longitude: location["lng"],
+        photo_reference: photo_reference,
       )
     end
   end
