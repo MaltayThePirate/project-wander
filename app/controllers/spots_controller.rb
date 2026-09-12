@@ -27,6 +27,7 @@ class SpotsController < ApplicationController
       address: result.address,
       source_url: url,
       source_provider: provider.to_s,
+      note: spot_params[:note],
       location: RGeo::Geographic.spherical_factory(srid: 4326)
                   .point(result.longitude, result.latitude)
     )
@@ -46,7 +47,7 @@ class SpotsController < ApplicationController
   private
 
   def spot_params
-    params.require(:spot).permit(:source_url)
+    params.require(:spot).permit(:source_url, :note)
   end
 
   def spot_json(spot)
@@ -57,6 +58,8 @@ class SpotsController < ApplicationController
       latitude: spot.latitude,
       longitude: spot.longitude,
       source_provider: spot.source_provider,
+      source_url: spot.source_url,
+      note: spot.note,
       owner_id: spot.user_id
     }
   end
