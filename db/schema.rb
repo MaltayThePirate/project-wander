@@ -10,10 +10,30 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_12_115930) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_17_204111) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
+
+  create_table "categories", force: :cascade do |t|
+    t.string "color", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id", "name"], name: "index_categories_on_trip_id_and_name", unique: true
+    t.index ["trip_id"], name: "index_categories_on_trip_id"
+  end
+
+  create_table "spot_categories", force: :cascade do |t|
+    t.bigint "category_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "spot_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_spot_categories_on_category_id"
+    t.index ["spot_id", "category_id"], name: "index_spot_categories_on_spot_id_and_category_id", unique: true
+    t.index ["spot_id"], name: "index_spot_categories_on_spot_id"
+  end
 
   create_table "spots", force: :cascade do |t|
     t.string "address"
@@ -57,6 +77,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_12_115930) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "categories", "trips"
+  add_foreign_key "spot_categories", "categories"
+  add_foreign_key "spot_categories", "spots"
   add_foreign_key "spots", "trips"
   add_foreign_key "spots", "users"
   add_foreign_key "trip_memberships", "trips"

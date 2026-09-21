@@ -4,6 +4,8 @@ class Spot < ApplicationRecord
 
   belongs_to :trip
   belongs_to :user
+  has_many :spot_categories, dependent: :destroy
+  has_many :categories, through: :spot_categories
 
   validates :name, presence: true
   validates :source_url, presence: true

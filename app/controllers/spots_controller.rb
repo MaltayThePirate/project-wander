@@ -36,6 +36,7 @@ class SpotsController < ApplicationController
     )
 
     if spot.save
+      spot.category_ids = spot_params[:category_ids] || []
       render json: spot_json(spot), status: :created
     else
       render json: { errors: spot.errors.full_messages }, status: :unprocessable_entity
@@ -76,7 +77,7 @@ class SpotsController < ApplicationController
   private
 
   def spot_params
-    params.require(:spot).permit(:source_url, :note)
+    params.require(:spot).permit(:source_url, :note, category_ids: [])
   end
 
   def spot_json(spot)
@@ -90,7 +91,8 @@ class SpotsController < ApplicationController
       source_provider: spot.source_provider,
       source_url: spot.source_url,
       note: spot.note,
-      owner_id: spot.user_id
+      owner_id: spot.user_id,
+      categories: spot.categories.map { |c| { id: c.id, name: c.name, color: c.color } }
     }
   end
 end
