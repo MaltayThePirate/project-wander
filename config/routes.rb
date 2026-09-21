@@ -11,6 +11,7 @@ Rails.application.routes.draw do
         get :photo
       end
     end
+    resources :categories, only: [ :index, :create ]
   end
 
   # Defines the root path route ("/")
