@@ -53,3 +53,24 @@ Canonical triage roles mapped to repo labels. See `docs/agents/triage-labels.md`
 
 Single-context layout (`DOMAIN.md`/root docs). See `docs/agents/domain.md`.
 
+## MCP & Credentials Configuration
+
+To enable GitHub MCP operations and secure Git credential persistence across sessions:
+1. **GitHub Personal Access Token (PAT):** Generated from GitHub Settings → Developer Settings → Personal Access Tokens (Classic or Fine-grained) with `repo` scope permissions.
+2. **MCP Integration:** Configured via project-root `.mcp.json` containing:
+   ```json
+   {
+     "mcpServers": {
+       "github": {
+         "command": "npx",
+         "args": ["-y", "@modelcontextprotocol/server-github"],
+         "env": {
+           "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_PAT>"
+         }
+       }
+     }
+   }
+   ```
+3. **Git Credentials Persistence:** Stored locally in `.git/credentials/store` using Git's credential helper (`git config --local credential.helper 'store --file=.git/credentials/store'`).
+
+
