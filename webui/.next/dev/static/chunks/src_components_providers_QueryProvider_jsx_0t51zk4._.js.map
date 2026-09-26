@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/neil/Projects/project-wander/webui/src/components/providers/QueryProvider.jsx"],"sourcesContent":["\"use client\";\n\nimport { useState } from \"react\";\nimport { QueryClient, QueryClientProvider } from \"@tanstack/react-query\";\n\nexport default function QueryProvider({ children }) {\n  const [queryClient] = useState(() => new QueryClient());\n\n  return (\n    <QueryClientProvider client={queryClient}>\n      {children}\n    </QueryClientProvider>\n  );\n}"],"names":["QueryProvider","children","queryClient","client"],"mappings":";;;;;AAEA;AACA;AAAA;;;AAHA;;;AAKe,SAASA,cAAc,EAAEC,QAAQ,EAAE;;IAChD,MAAM,CAACC,YAAY,GAAG,IAAA,yKAAQ;kCAAC,IAAM,IAAI,+LAAW;;IAEpD,qBACE,6LAAC,gNAAmB;QAACC,QAAQD;kBAC1BD;;;;;;AAGP;GARwBD;KAAAA"}}]
-}
