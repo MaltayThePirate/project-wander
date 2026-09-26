@@ -5,15 +5,15 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  resources :trips, only: [ :create, :show ] do
-    resources :spots, only: [ :index, :create ] do
+  resources :trips, only: [ :create, :show, :update ] do
+    resources :spots, only: [ :index, :create, :destroy ] do
       member do
         get :photo
       end
     end
     resources :categories, only: [ :index, :create ]
-    get "day-plans/:member_id/:date", to: "day_plans#show", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
-    put "day-plans/:member_id/:date", to: "day_plans#update", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    get "day-plans/:member_id/:date", to: "day_plans#show", as: :trip_day_plan, constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    put "day-plans/:member_id/:date", to: "day_plans#update", as: :update_trip_day_plan, constraints: { date: /\d{4}-\d{2}-\d{2}/ }
   end
 
   # Defines the root path route ("/")

@@ -17,6 +17,17 @@ class TripsController < ApplicationController
     render json: { error: "Trip not found" }, status: :not_found
   end
 
+  def update
+    trip = Trip.find(params[:id])
+    if trip.update(trip_params)
+      render json: trip_json(trip)
+    else
+      render json: { errors: trip.errors.full_messages }, status: :unprocessable_entity
+    end
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Trip not found" }, status: :not_found
+  end
+
   private
 
   def trip_params

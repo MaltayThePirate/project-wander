@@ -21,7 +21,7 @@ class DayPlansControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get empty day plan when none exists" do
-    get trip_day_plans_url(@trip, member_id: @user.id, date: "2026-11-02")
+    get "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02"
     assert_response :success
     json = JSON.parse(response.body)
     assert_nil json["day_plan"]
@@ -29,7 +29,7 @@ class DayPlansControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should create or update day plan spots and ranking" do
-    put trip_day_plans_url(@trip, member_id: @user.id, date: "2026-11-02"), params: {
+    put "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", params: {
       spots: [
         { spot_id: @spot.id, rank: 0 }
       ]

@@ -74,6 +74,24 @@ class SpotsController < ApplicationController
     head :not_found
   end
 
+  def destroy
+    trip = Trip.find(params[:trip_id])
+    spot = trip.spots.find(params[:id])
+
+    if spot.user_id != current_user.id
+      return render json: { error: "You can only delete spots you added" }, status: :forbidden
+    end
+
+    if spot.day_plan_spots.exists?
+      return render json: { error: "Cannot delete a spot that is currently included in a day plan" }, status: :unprocessable_entity
+    end
+
+    spot.destroy
+    head :no_content
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Trip or spot not found" }, status: :not_found
+  end
+
   private
 
   def spot_params
