@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Home, Info, X, Plus, Check } from "lucide-react";
 import { apiGet, apiPut } from "@/lib/api";
+import Dropdown from "@/components/ui/Dropdown";
 
 const STAMP_TILT = -1.5;
 
@@ -33,21 +34,6 @@ export function StampBadge({ label, categoryColors }) {
 export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact }) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
 
   const formatMMDD = (isoStr) => {
     if (!isoStr) return "";
@@ -110,90 +96,82 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
   const isAssignedAnywhere = assignedDates.length > 0;
   const primaryAssignedDate = assignedDates[0];
 
-  return (
-    <div ref={dropdownRef} style={{ position: "relative", flexShrink: 0 }}>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen((v) => !v);
-        }}
-        aria-label="Add to day plan"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "4px",
-          width: isAssignedAnywhere ? "auto" : (compact ? "26px" : "30px"),
-          height: compact ? "26px" : "30px",
-          padding: isAssignedAnywhere ? (compact ? "0 8px" : "0 10px") : 0,
-          border: "1px solid " + (isAssignedAnywhere ? "#2B6E6E" : "#E4DDCE"),
-          background: isAssignedAnywhere ? "#2B6E6E" : "#FFFFFF",
-          color: isAssignedAnywhere ? "#FAF7F1" : "#1F2E35",
-          borderRadius: isAssignedAnywhere ? "6px" : "50%",
-          cursor: "pointer",
-          fontFamily: "var(--font-inter), sans-serif",
-          fontSize: compact ? "11px" : "12px",
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
-      >
-        {isAssignedAnywhere ? (
-          <span>{formatMMDD(primaryAssignedDate)}{assignedDates.length > 1 ? ` (+${assignedDates.length - 1})` : ""}</span>
-        ) : (
-          <Plus size={compact ? 14 : 16} strokeWidth={2.5} />
-        )}
-      </button>
-
-      {isOpen && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "absolute",
-            right: 0,
-            top: "calc(100% + 6px)",
-            background: "#FFFFFF",
-            border: "1px solid var(--color-border)",
-            borderRadius: "10px",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-            padding: "10px",
-            zIndex: 1000,
-            minWidth: "160px",
-          }}
-        >
-          <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "10.5px", textTransform: "uppercase", color: "#8A8270", marginBottom: "8px", letterSpacing: "0.05em" }}>
-            Add to Day Plan
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            {rawDates.map((dateStr) => {
-              const checked = !!assignedMap[dateStr];
-              return (
-                <div
-                  key={dateStr}
-                  onClick={() => handleToggleDate(dateStr)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "6px 8px",
-                    borderRadius: "6px",
-                    background: checked ? "rgba(43, 110, 110, 0.08)" : "transparent",
-                    cursor: "pointer",
-                    fontFamily: "var(--font-inter), sans-serif",
-                    fontSize: "12.5px",
-                    color: checked ? "#2B6E6E" : "#1F2E35",
-                    fontWeight: checked ? 600 : 400,
-                  }}
-                >
-                  <span>{formatMMDD(dateStr)}</span>
-                  {checked && <Check size={14} strokeWidth={2.5} />}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+  const trigger = (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setIsOpen((v) => !v);
+      }}
+      aria-label="Add to day plan"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "4px",
+        width: isAssignedAnywhere ? "auto" : (compact ? "26px" : "30px"),
+        height: compact ? "26px" : "30px",
+        padding: isAssignedAnywhere ? (compact ? "0 8px" : "0 10px") : 0,
+        border: "1px solid " + (isAssignedAnywhere ? "#2B6E6E" : "#E4DDCE"),
+        background: isAssignedAnywhere ? "#2B6E6E" : "#FFFFFF",
+        color: isAssignedAnywhere ? "#FAF7F1" : "#1F2E35",
+        borderRadius: isAssignedAnywhere ? "6px" : "50%",
+        cursor: "pointer",
+        fontFamily: "var(--font-inter), sans-serif",
+        fontSize: compact ? "11px" : "12px",
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+      }}
+    >
+      {isAssignedAnywhere ? (
+        <span>{formatMMDD(primaryAssignedDate)}{assignedDates.length > 1 ? ` (+${assignedDates.length - 1})` : ""}</span>
+      ) : (
+        <Plus size={compact ? 14 : 16} strokeWidth={2.5} />
       )}
-    </div>
+    </button>
+  );
+
+  return (
+    <Dropdown
+      isOpen={isOpen}
+      onClose={() => setIsOpen(false)}
+      trigger={trigger}
+      align="right"
+      width="160px"
+    >
+      <div onClick={(e) => e.stopPropagation()}>
+        <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "10.5px", textTransform: "uppercase", color: "#8A8270", marginBottom: "8px", letterSpacing: "0.05em", padding: "0 2px" }}>
+          Add to Day Plan
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {rawDates.map((dateStr) => {
+            const checked = !!assignedMap[dateStr];
+            return (
+              <div
+                key={dateStr}
+                onClick={() => handleToggleDate(dateStr)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "6px 8px",
+                  borderRadius: "6px",
+                  background: checked ? "rgba(43, 110, 110, 0.08)" : "transparent",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  fontSize: "12.5px",
+                  color: checked ? "#2B6E6E" : "#1F2E35",
+                  fontWeight: checked ? 600 : 400,
+                }}
+              >
+                <span>{formatMMDD(dateStr)}</span>
+                {checked && <Check size={14} strokeWidth={2.5} />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Dropdown>
   );
 }
 

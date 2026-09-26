@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_26_041726) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_26_221946) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -45,6 +45,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_041726) do
     t.index ["trip_id", "user_id", "date"], name: "index_day_plans_on_trip_user_and_date", unique: true
     t.index ["trip_id"], name: "index_day_plans_on_trip_id"
     t.index ["user_id"], name: "index_day_plans_on_user_id"
+  end
+
+  create_table "flights", force: :cascade do |t|
+    t.datetime "arrival_date"
+    t.string "arrival_flight_number"
+    t.string "arrival_origin"
+    t.datetime "created_at", null: false
+    t.datetime "departure_date"
+    t.string "departure_destination"
+    t.string "departure_flight_number"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["trip_id", "user_id"], name: "index_flights_on_trip_id_and_user_id", unique: true
+    t.index ["trip_id"], name: "index_flights_on_trip_id"
+    t.index ["user_id"], name: "index_flights_on_user_id"
   end
 
   create_table "spot_categories", force: :cascade do |t|
@@ -104,6 +120,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_041726) do
   add_foreign_key "day_plan_spots", "spots"
   add_foreign_key "day_plans", "trips"
   add_foreign_key "day_plans", "users"
+  add_foreign_key "flights", "trips"
+  add_foreign_key "flights", "users"
   add_foreign_key "spot_categories", "categories"
   add_foreign_key "spot_categories", "spots"
   add_foreign_key "spots", "trips"
