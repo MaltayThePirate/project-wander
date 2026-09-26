@@ -9,11 +9,13 @@ export default function FlightModal({ trip, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const [arrivalDate, setArrivalDate] = useState("");
+  const [arrivalDateOnly, setArrivalDateOnly] = useState("");
+  const [arrivalTimeOnly, setArrivalTimeOnly] = useState("");
   const [arrivalFlightNumber, setArrivalFlightNumber] = useState("");
   const [arrivalOrigin, setArrivalOrigin] = useState("");
 
-  const [departureDate, setDepartureDate] = useState("");
+  const [departureDateOnly, setDepartureDateOnly] = useState("");
+  const [departureTimeOnly, setDepartureTimeOnly] = useState("");
   const [departureFlightNumber, setDepartureFlightNumber] = useState("");
   const [departureDestination, setDepartureDestination] = useState("");
 
@@ -24,16 +26,21 @@ export default function FlightModal({ trip, onClose }) {
         if (data && data.flight) {
           const f = data.flight;
           if (f.arrival_date) {
-            // format to datetime-local string YYYY-MM-DDTHH:mm
             const dt = new Date(f.arrival_date);
-            setArrivalDate(!isNaN(dt.getTime()) ? dt.toISOString().slice(0, 16) : "");
+            if (!isNaN(dt.getTime())) {
+              setArrivalDateOnly(dt.toISOString().slice(0, 10));
+              setArrivalTimeOnly(dt.toTimeString().slice(0, 5));
+            }
           }
           setArrivalFlightNumber(f.arrival_flight_number || "");
           setArrivalOrigin(f.arrival_origin || "");
 
           if (f.departure_date) {
             const dt = new Date(f.departure_date);
-            setDepartureDate(!isNaN(dt.getTime()) ? dt.toISOString().slice(0, 16) : "");
+            if (!isNaN(dt.getTime())) {
+              setDepartureDateOnly(dt.toISOString().slice(0, 10));
+              setDepartureTimeOnly(dt.toTimeString().slice(0, 5));
+            }
           }
           setDepartureFlightNumber(f.departure_flight_number || "");
           setDepartureDestination(f.departure_destination || "");
@@ -50,28 +57,30 @@ export default function FlightModal({ trip, onClose }) {
   // Check if dates fall outside trip window (start_date / end_date)
   const isOutsideWindow = (dateStr) => {
     if (!dateStr || !trip.start_date || !trip.end_date) return false;
-    // Extract YYYY-MM-DD prefix from string if present
-    const match = dateStr.match(/\d{4}-\d{2}-\d{2}/);
-    if (!match) return false;
-    const flightYMD = match[0];
-    return flightYMD < trip.start_date || flightYMD > trip.end_date;
+    return dateStr < trip.start_date || dateStr > trip.end_date;
   };
 
-  const arrivalWarning = isOutsideWindow(arrivalDate);
-  const departureWarning = isOutsideWindow(departureDate);
+  const arrivalWarning = isOutsideWindow(arrivalDateOnly);
+  const departureWarning = isOutsideWindow(departureDateOnly);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
 
+    const formatDateTime = (dateStr, timeStr) => {
+      if (!dateStr) return null;
+      const t = timeStr && timeStr.trim() !== "" ? timeStr.trim() : "00:00";
+      return new Date(`${dateStr}T${t}:00`).toISOString();
+    };
+
     try {
       await apiPost(`/trips/${trip.id}/flight`, {
         flight: {
-          arrival_date: arrivalDate ? new Date(arrivalDate).toISOString() : null,
+          arrival_date: formatDateTime(arrivalDateOnly, arrivalTimeOnly),
           arrival_flight_number: arrivalFlightNumber,
           arrival_origin: arrivalOrigin,
-          departure_date: departureDate ? new Date(departureDate).toISOString() : null,
+          departure_date: formatDateTime(departureDateOnly, departureTimeOnly),
           departure_flight_number: departureFlightNumber,
           departure_destination: departureDestination,
         },
@@ -171,13 +180,12 @@ export default function FlightModal({ trip, onClose }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
-                    Arrival Date & Time
+                    Arrival Date
                   </label>
                   <input
-                    type="text"
-                    placeholder="YYYY-MM-DD HH:MM"
-                    value={arrivalDate}
-                    onChange={(e) => setArrivalDate(e.target.value)}
+                    type="date"
+                    value={arrivalDateOnly}
+                    onChange={(e) => setArrivalDateOnly(e.target.value)}
                     style={{
                       width: "100%",
                       padding: "8px 10px",
@@ -187,6 +195,26 @@ export default function FlightModal({ trip, onClose }) {
                     }}
                   />
                 </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
+                    Arrival Time (HH:MM)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="15:30"
+                    value={arrivalTimeOnly}
+                    onChange={(e) => setArrivalTimeOnly(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border)",
+                      fontSize: "13px",
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
                     Flight #
@@ -205,24 +233,24 @@ export default function FlightModal({ trip, onClose }) {
                     }}
                   />
                 </div>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
-                  Arrival Airport
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. SFO"
-                  value={arrivalOrigin}
-                  onChange={(e) => setArrivalOrigin(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid var(--color-border)",
-                    fontSize: "13px",
-                  }}
-                />
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
+                    Arrival Airport
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SFO"
+                    value={arrivalOrigin}
+                    onChange={(e) => setArrivalOrigin(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border)",
+                      fontSize: "13px",
+                    }}
+                  />
+                </div>
               </div>
 
               {arrivalWarning && (
@@ -241,13 +269,12 @@ export default function FlightModal({ trip, onClose }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
-                    Departure Date & Time
+                    Departure Date
                   </label>
                   <input
-                    type="text"
-                    placeholder="YYYY-MM-DD HH:MM"
-                    value={departureDate}
-                    onChange={(e) => setDepartureDate(e.target.value)}
+                    type="date"
+                    value={departureDateOnly}
+                    onChange={(e) => setDepartureDateOnly(e.target.value)}
                     style={{
                       width: "100%",
                       padding: "8px 10px",
@@ -257,6 +284,26 @@ export default function FlightModal({ trip, onClose }) {
                     }}
                   />
                 </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
+                    Departure Time (HH:MM)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="18:00"
+                    value={departureTimeOnly}
+                    onChange={(e) => setDepartureTimeOnly(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border)",
+                      fontSize: "13px",
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
                     Flight #
@@ -275,24 +322,24 @@ export default function FlightModal({ trip, onClose }) {
                     }}
                   />
                 </div>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
-                  Destination Airport
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. SFO"
-                  value={departureDestination}
-                  onChange={(e) => setDepartureDestination(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid var(--color-border)",
-                    fontSize: "13px",
-                  }}
-                />
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
+                    Destination Airport
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SFO"
+                    value={departureDestination}
+                    onChange={(e) => setDepartureDestination(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border)",
+                      fontSize: "13px",
+                    }}
+                  />
+                </div>
               </div>
 
               {departureWarning && (
