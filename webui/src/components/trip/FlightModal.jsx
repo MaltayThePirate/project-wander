@@ -23,27 +23,29 @@ export default function FlightModal({ trip, onClose }) {
     async function fetchFlight() {
       try {
         const data = await apiGet(`/trips/${trip.id}/flight`);
-        if (data && data.flight) {
-          const f = data.flight;
-          if (f.arrival_date) {
-            const dt = new Date(f.arrival_date);
-            if (!isNaN(dt.getTime())) {
-              setArrivalDateOnly(dt.toISOString().slice(0, 10));
-              setArrivalTimeOnly(dt.toTimeString().slice(0, 5));
+        if (data) {
+          const f = data.flight || data;
+          if (f && f.id) {
+            if (f.arrival_date) {
+              const dt = new Date(f.arrival_date);
+              if (!isNaN(dt.getTime())) {
+                setArrivalDateOnly(dt.toISOString().slice(0, 10));
+                setArrivalTimeOnly(dt.toTimeString().slice(0, 5));
+              }
             }
-          }
-          setArrivalFlightNumber(f.arrival_flight_number || "");
-          setArrivalOrigin(f.arrival_origin || "");
+            setArrivalFlightNumber(f.arrival_flight_number || "");
+            setArrivalOrigin(f.arrival_origin || "");
 
-          if (f.departure_date) {
-            const dt = new Date(f.departure_date);
-            if (!isNaN(dt.getTime())) {
-              setDepartureDateOnly(dt.toISOString().slice(0, 10));
-              setDepartureTimeOnly(dt.toTimeString().slice(0, 5));
+            if (f.departure_date) {
+              const dt = new Date(f.departure_date);
+              if (!isNaN(dt.getTime())) {
+                setDepartureDateOnly(dt.toISOString().slice(0, 10));
+                setDepartureTimeOnly(dt.toTimeString().slice(0, 5));
+              }
             }
+            setDepartureFlightNumber(f.departure_flight_number || "");
+            setDepartureDestination(f.departure_destination || "");
           }
-          setDepartureFlightNumber(f.departure_flight_number || "");
-          setDepartureDestination(f.departure_destination || "");
         }
       } catch (err) {
         console.error("Failed to load flight", err);
