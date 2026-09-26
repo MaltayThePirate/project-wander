@@ -28,4 +28,29 @@ class TripsControllerTest < ActionDispatch::IntegrationTest
     json = JSON.parse(response.body)
     assert json["errors"].any? { |e| e.include?("End date") || e.include?("end_date") }
   end
+
+  test "should reject updating trip dates if day plans with spots fall outside new range" do
+    factory = RGeo::Geographic.spherical_factory(srid: 4326)
+    point = factory.point(139.6917, 35.6895)
+    spot = Spot.create!(
+      trip: @trip,
+      user: @user,
+      name: "Tokyo Tower",
+      address: "Tokyo",
+      location: point,
+      source_url: "https://maps.google.com/?q=Tokyo+Tower",
+      source_provider: "google"
+    )
+
+    day_plan = DayPlan.create!(trip: @trip, user: @user, date: "2026-10-02")
+    DayPlanSpot.create!(day_plan: day_plan, spot: spot, rank: 0)
+
+    patch trip_url(@trip), params: {
+      trip: { start_date: "2026-10-05", end_date: "2026-10-10" }
+    }, as: :json
+
+    assert_response :unprocessable_entity
+    json = JSON.parse(response.body)
+    assert json["errors"].any? { |e| e.include?("day plans with spots outside") }
+  end
 end
