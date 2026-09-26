@@ -36,7 +36,12 @@ This directory contains markdown definitions for all outstanding Release 1 user 
    - *FR:* FR-6
    - *Description:* Implement read-only Shared View API endpoint (`/trips/:tripId/day-plans/shared-view/:date`) aggregating members' day plans sorted by lowest contributing Rank then alphabetical, with member filtering query parameters.
 
-7. **[R1-F-03: Shared Itinerary Message Export](r1-f-itinerary-export.md)**
+7. **[R1-B-03 & R1-B-04: Spot Uniqueness & Deletion Guards](r1-b-spots-uniqueness-deletion.md)**
+   - *Area:* Spots & Categories (Area B)
+   - *FR:* FR-2
+   - *Description:* Enforce spot uniqueness per trip and implement secure spot deletion (`DELETE /trips/:tripId/spots/:id`) guarded against active day plan usages.
+
+8. **[R1-F-03: Shared Itinerary Message Export](r1-f-itinerary-export.md)**
    - *Area:* Exports & Offline (Area F)
    - *FR:* FR-9
    - *Description:* Implement copy-to-clipboard text export of Day Plans or Shared Views (listing spot name, address, category) for offline reference.
