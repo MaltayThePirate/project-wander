@@ -28,7 +28,14 @@ class TripsController < ApplicationController
       id: trip.id,
       name: trip.name,
       start_date: trip.start_date,
-      end_date: trip.end_date
+      end_date: trip.end_date,
+      members: trip.trip_memberships.includes(:user).map { |m|
+        {
+          id: m.user.id,
+          name: m.user.name,
+          email: m.user.email
+        }
+      }
     }
   end
 end

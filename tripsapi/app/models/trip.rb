@@ -3,6 +3,7 @@ class Trip < ApplicationRecord
   has_many :users, through: :trip_memberships
   has_many :spots, dependent: :destroy
   has_many :categories, dependent: :destroy
+  has_many :day_plans, dependent: :destroy
 
   STARTER_CATEGORIES = [
     { name: "Places to Eat", color: "#B8462F" },
