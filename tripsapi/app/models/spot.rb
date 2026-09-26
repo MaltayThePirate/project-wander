@@ -6,9 +6,12 @@ class Spot < ApplicationRecord
   belongs_to :user
   has_many :spot_categories, dependent: :destroy
   has_many :categories, through: :spot_categories
+  has_many :day_plan_spots, dependent: :destroy
+  has_many :day_plans, through: :day_plan_spots
 
   validates :name, presence: true
   validates :source_url, presence: true
+  validates :source_url, uniqueness: { scope: :trip_id, message: "has already been added to this trip" }
   validates :source_provider, presence: true, inclusion: { in: %w[google apple] }
   validates :location, presence: true
 

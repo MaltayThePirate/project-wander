@@ -1,4 +1,4 @@
-export default function PageHeader({ eyebrow, title, children }) {
+export default function PageHeader({ eyebrow, title, eyebrowClickable, onEyebrowClick, children }) {
   return (
     <div
       style={{
@@ -11,7 +11,18 @@ export default function PageHeader({ eyebrow, title, children }) {
       }}
     >
       <div>
-        <div className="eyebrow-label" style={{ marginBottom: "4px" }}>
+        <div
+          onClick={onEyebrowClick}
+          className="eyebrow-label"
+          style={{
+            marginBottom: "4px",
+            cursor: eyebrowClickable ? "pointer" : "default",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
+          }}
+          title={eyebrowClickable ? "Click to edit trip dates" : undefined}
+        >
           {eyebrow}
         </div>
         <h1 className="page-heading">{title}</h1>
