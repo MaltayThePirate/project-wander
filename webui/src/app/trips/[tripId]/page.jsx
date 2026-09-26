@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, LayoutGrid, List as ListIcon, Map, Info, X } from "lucide-react";
 import MapView from "@/components/trip/MapView";
+import DayPlanView from "@/components/trip/DayPlanView";
 import { apiGet } from "@/lib/api";
 import { formatShortDate } from "@/lib/format";
 
@@ -14,8 +16,9 @@ import AddSpotForm from "@/components/trip/AddSpotForm";
 import AddCategoryForm from "@/components/trip/AddCategoryForm";
 import SpotCard from "@/components/trip/SpotCard";
 
-export default function TripHomePage({ params }) {
-  const { tripId } = useParams();
+export default function TripHomePage() {
+  const params = useParams();
+  const tripId = params?.tripId;
 
   const [search, setSearch] = useState("");
   const [view, setView] = useState("grid"); // "grid", "list", "map"
@@ -241,10 +244,29 @@ export default function TripHomePage({ params }) {
             >
               <Map size={15} strokeWidth={2} />
             </button>
+            <button
+              onClick={() => setView("day-plan")}
+              aria-label="Day plan view"
+              style={{
+                border: "none",
+                background: view === "day-plan" ? "var(--color-ink)" : "transparent",
+                color: view === "day-plan" ? "var(--color-parchment)" : "var(--color-muted)",
+                borderRadius: "6px",
+                padding: "7px 10px",
+                cursor: "pointer",
+                fontFamily: "var(--font-inter), sans-serif",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              Day Plan
+            </button>
           </div>
         </div>
 
-        {spots.length === 0 ? (
+        {view === "day-plan" ? (
+          <DayPlanView trip={trip} />
+        ) : spots.length === 0 ? (
           <div style={{ textAlign: "center", padding: "70px 24px", border: "1.5px dashed var(--color-border)", borderRadius: "14px", background: "#FFFFFF" }}>
             <div style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 600, fontSize: "20px", color: "var(--color-ink)", marginBottom: "8px" }}>
               Your Trip is empty
