@@ -7,6 +7,7 @@ This directory contains markdown definitions for all outstanding Release 1 user 
 1. **[R1-A-02: Trip Window Edit Flow](r1-a-02-trip-window-edit.md)**
    - *Area:* Trip Management (Area A)
    - *FR:* FR-3
+   - *Status:* ✅ Implemented
    - *Description:* Add backend endpoint (`PATCH /trips/:id`) and frontend UI to edit an existing Trip's start and end dates.
 
 2. **[R1-C-01 & R1-C-02: Per-Member Flights & Validation](r1-c-flights.md)**
@@ -39,6 +40,7 @@ This directory contains markdown definitions for all outstanding Release 1 user 
 7. **[R1-B-03 & R1-B-04: Spot Uniqueness & Deletion Guards](r1-b-spots-uniqueness-deletion.md)**
    - *Area:* Spots & Categories (Area B)
    - *FR:* FR-2
+   - *Status:* ✅ Implemented
    - *Description:* Enforce spot uniqueness per trip and implement secure spot deletion (`DELETE /trips/:tripId/spots/:id`) guarded against active day plan usages.
 
 8. **[R1-F-03: Shared Itinerary Message Export](r1-f-itinerary-export.md)**
