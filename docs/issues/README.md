@@ -28,6 +28,7 @@ This directory contains markdown definitions for all outstanding Release 1 user 
 5. **[R1-E-01 & R1-E-02: Day Plan Assignment & Drag-and-Drop Ranking](r1-e-day-plans.md)**
    - *Area:* Day Plans & Shared View (Area E)
    - *FR:* FR-6
+   - *Status:* ✅ Implemented
    - *Description:* Implement `DayPlan` and `DayPlanSpot` models with `rank` ordering, endpoints, and frontend drag-and-drop reordering (evaluating `@dnd-kit` for touch support).
 
 6. **[R1-E-03 & R1-E-04: Derived Shared View Endpoint & UI](r1-e-shared-view.md)**
