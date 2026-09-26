@@ -33,9 +33,34 @@ export function StampBadge({ label, categoryColors }) {
 export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact }) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Helper to format YYYY-MM-DD into MM/DD
+  const formatMMDD = (isoStr) => {
+    if (!isoStr) return "";
+    const parts = isoStr.split("-");
+    if (parts.length === 3) {
+      return `${parts[1]}/${parts[2]}`;
+    }
+    return isoStr;
+  };
 
   // Fetch day plans for all trip dates for this member
-  // For each rawDate (YYYY-MM-DD), check if spotId is assigned
   const dateQueries = useQuery({
     queryKey: ["trip", tripId, "spot-day-plans", spotId, memberId],
     queryFn: async () => {
@@ -89,7 +114,7 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
   const primaryAssignedDate = assignedDates[0];
 
   return (
-    <div style={{ position: "relative", flexShrink: 0 }}>
+    <div ref={dropdownRef} style={{ position: "relative", flexShrink: 0 }}>
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -116,7 +141,7 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
         }}
       >
         {isAssignedAnywhere ? (
-          <span>{primaryAssignedDate}{assignedDates.length > 1 ? ` (+${assignedDates.length - 1})` : ""}</span>
+          <span>{formatMMDD(primaryAssignedDate)}{assignedDates.length > 1 ? ` (+${assignedDates.length - 1})` : ""}</span>
         ) : (
           <Plus size={compact ? 14 : 16} strokeWidth={2.5} />
         )}
@@ -162,7 +187,7 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
                     fontWeight: checked ? 600 : 400,
                   }}
                 >
-                  <span>{dateStr}</span>
+                  <span>{formatMMDD(dateStr)}</span>
                   {checked && <Check size={14} strokeWidth={2.5} />}
                 </div>
               );
