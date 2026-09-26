@@ -10,7 +10,8 @@ export default function FlightSummary({ trip, onEdit }) {
     queryFn: () => apiGet(`/trips/${trip.id}/flight`),
   });
 
-  const flight = flightQuery.data?.flight;
+  const resData = flightQuery.data;
+  const flight = resData?.flight || (resData?.id ? resData : null);
 
   if (flightQuery.isLoading) {
     return null;
