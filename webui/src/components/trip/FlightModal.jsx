@@ -208,7 +208,7 @@ export default function FlightModal({ trip, onClose }) {
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--color-ink-muted)", marginBottom: "4px" }}>
-                  Origin Airport
+                  Arrival Airport
                 </label>
                 <input
                   type="text"
