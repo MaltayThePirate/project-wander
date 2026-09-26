@@ -15,12 +15,14 @@ import AddMenuButton from "@/components/trip/AddMenuButton";
 import AddSpotForm from "@/components/trip/AddSpotForm";
 import EditTripModal from "@/components/trip/EditTripModal";
 import FlightModal from "@/components/trip/FlightModal";
+import FlightSummary from "@/components/trip/FlightSummary";
 import SpotCard from "@/components/trip/SpotCard";
 
 export default function TripHomePage() {
   const params = useParams();
   const tripId = params?.tripId;
 
+  const [activeTab, setActiveTab] = useState("spots"); // "spots", "flights"
   const [search, setSearch] = useState("");
   const [view, setView] = useState("grid"); // "grid", "list", "map"
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -90,18 +92,78 @@ export default function TripHomePage() {
   return (
     <div style={{ padding: "28px 24px 60px" }}>
       <div style={{ maxWidth: "1040px", margin: "0 auto" }}>
-        <PageHeader
-          eyebrow={`${trip.name} · ${dateRangeLabel}`}
-          title="Spots"
-          eyebrowClickable={true}
-          onEyebrowClick={() => setShowEditTripModal(true)}
-        >
-          <AddMenuButton
-            isOpen={headerMenuOpen}
-            onToggleOpen={() => setHeaderMenuOpen((v) => !v)}
-            onSelect={handleSelect}
-          />
-        </PageHeader>
+        <div style={{ marginBottom: "20px" }}>
+          <div
+            onClick={() => setShowEditTripModal(true)}
+            className="eyebrow-label"
+            style={{
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              marginBottom: "4px",
+            }}
+            title="Click to edit trip dates"
+          >
+            {dateRangeLabel}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+            <h1
+              onClick={() => setShowEditTripModal(true)}
+              style={{
+                fontFamily: "var(--font-fraunces), serif",
+                fontSize: "32px",
+                fontWeight: 600,
+                color: "var(--color-ink)",
+                margin: 0,
+                cursor: "pointer",
+              }}
+              title="Click to edit trip name"
+            >
+              {trip.name}
+            </h1>
+
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <button
+                onClick={() => setActiveTab("spots")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--color-border)",
+                  background: activeTab === "spots" ? "var(--color-ink)" : "#FFFFFF",
+                  color: activeTab === "spots" ? "var(--color-parchment)" : "var(--color-ink)",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Spot Planning
+              </button>
+              <button
+                onClick={() => setActiveTab("flights")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--color-border)",
+                  background: activeTab === "flights" ? "var(--color-ink)" : "#FFFFFF",
+                  color: activeTab === "flights" ? "var(--color-parchment)" : "var(--color-ink)",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Flight Details
+              </button>
+              <AddMenuButton
+                isOpen={headerMenuOpen}
+                onToggleOpen={() => setHeaderMenuOpen((v) => !v)}
+                onSelect={handleSelect}
+              />
+            </div>
+          </div>
+        </div>
 
         {showEditTripModal && (
           <EditTripModal trip={trip} onClose={() => setShowEditTripModal(false)} />
@@ -284,7 +346,9 @@ export default function TripHomePage() {
           </div>
         </div>
 
-        {view === "day-plan" ? (
+        {activeTab === "flights" ? (
+          <FlightSummary trip={trip} onEdit={() => setShowFlightModal(true)} />
+        ) : view === "day-plan" ? (
           <DayPlanView trip={trip} />
         ) : spots.length === 0 ? (
           <div style={{ textAlign: "center", padding: "70px 24px", border: "1.5px dashed var(--color-border)", borderRadius: "14px", background: "#FFFFFF" }}>
