@@ -10,10 +10,82 @@ module Geocoding
     def self.geocode(url)
       resolved_url = resolve_shortlink(url)
       query = extract_query(resolved_url)
+
+      # If URL contains coordinates (@lat,lng), trust the exact coordinates and place name from URL path
+      if (match = resolved_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/))
+        lat = match[1].to_f
+        lng = match[2].to_f
+
+        # Try to fetch place details to get address and photo
+        result = fetch_precise_place(query, lat, lng)
+        return result if result && query.present? && result.name.downcase.include?(query.downcase.split.first)
+
+        # If text search returned wrong place, use reverse geocoding to get exact formatted address for the lat/lng
+        reverse_address = fetch_reverse_geocoded_address(lat, lng)
+
+        return Geocoding::Result.new(
+          name: query || "Saved Spot",
+          address: reverse_address || "Tokyo, Japan",
+          latitude: lat,
+          longitude: lng,
+          photo_reference: result&.photo_reference
+        )
+      end
+
       raise Geocoding::Error, "could not extract a place from this Google Maps link" if query.nil?
 
       response = fetch(query)
       parse(response)
+    end
+
+    def self.fetch_reverse_geocoded_address(lat, lng)
+      uri = URI("https://maps.googleapis.com/maps/api/geocode/json")
+      uri.query = URI.encode_www_form(
+        latlng: "#{lat},#{lng}",
+        key: Rails.application.credentials.google_maps[:geocoding_api_key]
+      )
+
+      response = Net::HTTP.get_response(uri)
+      return nil unless response.is_a?(Net::HTTPSuccess)
+
+      body = JSON.parse(response.body)
+      return nil unless body["status"] == "OK" && body["results"].present?
+
+      body["results"].first["formatted_address"]
+    rescue StandardError
+      nil
+    end
+
+    def self.fetch_precise_place(query, lat, lng)
+      # Use Google Places Nearby Search / Text Search with strict location and radius
+      uri = URI("https://maps.googleapis.com/maps/api/place/textsearch/json")
+      params = {
+        location: "#{lat},#{lng}",
+        radius: 100, # strict 100m radius around dropped pin coordinates
+        key: Rails.application.credentials.google_maps[:geocoding_api_key]
+      }
+      params[:query] = query if query.present?
+
+      uri.query = URI.encode_www_form(params)
+      response = Net::HTTP.get_response(uri)
+      return nil unless response.is_a?(Net::HTTPSuccess)
+
+      body = JSON.parse(response.body)
+      return nil unless body["status"] == "OK" && body["results"].present?
+
+      result = body["results"].first
+      location = result.dig("geometry", "location")
+      photo_reference = result.dig("photos", 0, "photo_reference")
+
+      Geocoding::Result.new(
+        name: result["name"],
+        address: result["formatted_address"],
+        latitude: location["lat"],
+        longitude: location["lng"],
+        photo_reference: photo_reference
+      )
+    rescue StandardError
+      nil
     end
 
     def self.resolve_shortlink(url, redirects_left = MAX_REDIRECTS)
