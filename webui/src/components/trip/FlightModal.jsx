@@ -50,11 +50,10 @@ export default function FlightModal({ trip, onClose }) {
   // Check if dates fall outside trip window (start_date / end_date)
   const isOutsideWindow = (dateStr) => {
     if (!dateStr || !trip.start_date || !trip.end_date) return false;
-    const flightDate = new Date(dateStr);
-    if (isNaN(flightDate.getTime())) return false;
-    
-    // compare dates (ignoring timezone offset issues by using YYYY-MM-DD strings)
-    const flightYMD = flightDate.toISOString().slice(0, 10);
+    // Extract YYYY-MM-DD prefix from string if present
+    const match = dateStr.match(/\d{4}-\d{2}-\d{2}/);
+    if (!match) return false;
+    const flightYMD = match[0];
     return flightYMD < trip.start_date || flightYMD > trip.end_date;
   };
 
@@ -175,7 +174,8 @@ export default function FlightModal({ trip, onClose }) {
                     Arrival Date & Time
                   </label>
                   <input
-                    type="datetime-local"
+                    type="text"
+                    placeholder="YYYY-MM-DD HH:MM"
                     value={arrivalDate}
                     onChange={(e) => setArrivalDate(e.target.value)}
                     style={{
@@ -244,7 +244,8 @@ export default function FlightModal({ trip, onClose }) {
                     Departure Date & Time
                   </label>
                   <input
-                    type="datetime-local"
+                    type="text"
+                    placeholder="YYYY-MM-DD HH:MM"
                     value={departureDate}
                     onChange={(e) => setDepartureDate(e.target.value)}
                     style={{
