@@ -10,7 +10,7 @@
 - As a Trip Planner, I can freely drag and reorder Spots within my own Day Plan, persisted as a Rank value, since the order I want to visit them in isn't fixed when I add them.
 
 ## Acceptance Criteria
-- [ ] Create `DayPlan` model (keyed uniquely on `trip_id`, `user_id`, `date`) and `DayPlanSpot` join model carrying a `rank` value.
-- [ ] REST API endpoints for managing member day plans and spot assignments/ranking (`/trips/:tripId/day-plans/:memberId/:date`).
-- [ ] Evaluate and integrate touch-friendly drag-and-drop library (`@dnd-kit`) in `tripsui`.
-- [ ] Persist new rank on drop without shifting entire list sequences.
+- [x] Create `DayPlan` model (keyed uniquely on `trip_id`, `user_id`, `date`) and `DayPlanSpot` join model carrying a `rank` value.
+- [x] REST API endpoints for managing member day plans and spot assignments/ranking (`/trips/:tripId/day-plans/:memberId/:date`).
+- [x] Evaluate and integrate touch-friendly drag-and-drop library (`@dnd-kit`) in `tripsui`.
+- [x] Persist new rank on drop without shifting entire list sequences.

@@ -5,13 +5,13 @@ User stories covering personal day plan assignments, drag-and-drop ranking, and 
 ## Stories
 
 ### R1-E-01: Day Plan Spot Assignment
-- **Status:** ⬜ Not started
+- **Status:** ✅ Done
 - **Role:** Trip Planner
 - **FR Mapping:** FR-6
 - **Description:** As a Trip Planner, I can assign any Spot from the master list to my own Day Plan for a specific date, so I can build out a day's rough plan.
 
 ### R1-E-02: Drag-and-Drop Day Plan Reordering (Ranking)
-- **Status:** ⬜ Not started
+- **Status:** ✅ Done
 - **Role:** Trip Planner
 - **FR Mapping:** FR-6
 - **Description:** As a Trip Planner, I can freely drag and reorder Spots within my own Day Plan, persisted as a Rank value, since the order I want to visit them in isn't fixed when I add them.
