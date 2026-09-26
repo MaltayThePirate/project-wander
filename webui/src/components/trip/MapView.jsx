@@ -1,9 +1,7 @@
-"use client";
-
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Home, Info, X, Plus, Check } from "lucide-react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 
 const STAMP_TILT = -1.5;
 
@@ -32,41 +30,154 @@ export function StampBadge({ label, categoryColors }) {
   );
 }
 
-export function AddToPlanControl({ date, added, onToggle, compact }) {
+export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact }) {
+  const queryClient = useQueryClient();
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Fetch day plans for all trip dates for this member
+  // For each rawDate (YYYY-MM-DD), check if spotId is assigned
+  const dateQueries = useQuery({
+    queryKey: ["trip", tripId, "spot-day-plans", spotId, memberId],
+    queryFn: async () => {
+      const results = {};
+      for (const d of rawDates) {
+        try {
+          const data = await apiGet(`/trips/${tripId}/day-plans/${memberId}/${d}`);
+          const hasSpot = (data?.spots || []).some((s) => s.id === spotId);
+          results[d] = hasSpot;
+        } catch {
+          results[d] = false;
+        }
+      }
+      return results;
+    },
+    enabled: !!tripId && !!memberId && rawDates.length > 0,
+  });
+
+  const assignedMap = dateQueries.data || {};
+  const assignedDates = Object.entries(assignedMap)
+    .filter(([_, isAssigned]) => isAssigned)
+    .map(([dateStr]) => dateStr);
+
+  const mutation = useMutation({
+    mutationFn: async ({ date, assign }) => {
+      const current = await apiGet(`/trips/${tripId}/day-plans/${memberId}/${date}`).catch(() => ({ spots: [] }));
+      let spots = current?.spots || [];
+      if (assign) {
+        if (!spots.some((s) => s.id === spotId)) {
+          spots = [...spots, { id: spotId, rank: spots.length }];
+        }
+      } else {
+        spots = spots.filter((s) => s.id !== spotId);
+      }
+      return apiPost(`/trips/${tripId}/day-plans/${memberId}/${date}`, {
+        spots: spots.map((s, idx) => ({ spot_id: s.id, rank: idx })),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["trip", tripId, "spot-day-plans", spotId, memberId]);
+      queryClient.invalidateQueries(["trip", tripId, "day-plan"]);
+    },
+  });
+
+  const handleToggleDate = (dateStr) => {
+    const isCurrentlyAssigned = assignedMap[dateStr];
+    mutation.mutate({ date: dateStr, assign: !isCurrentlyAssigned });
+  };
+
+  const isAssignedAnywhere = assignedDates.length > 0;
+  const primaryAssignedDate = assignedDates[0];
+
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
-      {/* TODO: integrate with Day Plan API once Day Plan user story is implemented */}
       <button
-        onClick={onToggle}
-        aria-label={added ? "Remove from plan" : "Add to plan"}
-        title={added ? `Added to plan for ${date}` : `Add to plan for ${date}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen((v) => !v);
+        }}
+        aria-label="Add to day plan"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          width: compact ? "26px" : "30px",
+          gap: "4px",
           height: compact ? "26px" : "30px",
-          border: "1px solid " + (added ? "#2B6E6E" : "#E4DDCE"),
-          background: added ? "#2B6E6E" : "#FFFFFF",
-          color: added ? "#FAF7F1" : "#1F2E35",
-          borderRadius: "50%",
+          padding: compact ? "0 8px" : "0 10px",
+          border: "1px solid " + (isAssignedAnywhere ? "#2B6E6E" : "#E4DDCE"),
+          background: isAssignedAnywhere ? "#2B6E6E" : "#FFFFFF",
+          color: isAssignedAnywhere ? "#FAF7F1" : "#1F2E35",
+          borderRadius: isAssignedAnywhere ? "6px" : "50%",
           cursor: "pointer",
-          padding: 0,
+          fontFamily: "var(--font-inter), sans-serif",
+          fontSize: compact ? "11px" : "12px",
+          fontWeight: 600,
+          whiteSpace: "nowrap",
           flexShrink: 0,
         }}
       >
-        {added ? (
-          <Check size={compact ? 13 : 15} strokeWidth={2.5} />
+        {isAssignedAnywhere ? (
+          <span>{primaryAssignedDate}{assignedDates.length > 1 ? ` (+${assignedDates.length - 1})` : ""}</span>
         ) : (
           <Plus size={compact ? 14 : 16} strokeWidth={2.5} />
         )}
       </button>
+
+      {isOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "calc(100% + 6px)",
+            background: "#FFFFFF",
+            border: "1px solid var(--color-border)",
+            borderRadius: "10px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+            padding: "10px",
+            zIndex: 1000,
+            minWidth: "160px",
+          }}
+        >
+          <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "10.5px", textTransform: "uppercase", color: "#8A8270", marginBottom: "8px", letterSpacing: "0.05em" }}>
+            Add to Day Plan
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            {rawDates.map((dateStr) => {
+              const checked = !!assignedMap[dateStr];
+              return (
+                <div
+                  key={dateStr}
+                  onClick={() => handleToggleDate(dateStr)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "6px 8px",
+                    borderRadius: "6px",
+                    background: checked ? "rgba(43, 110, 110, 0.08)" : "transparent",
+                    cursor: "pointer",
+                    fontFamily: "var(--font-inter), sans-serif",
+                    fontSize: "12.5px",
+                    color: checked ? "#2B6E6E" : "#1F2E35",
+                    fontWeight: checked ? 600 : 400,
+                  }}
+                >
+                  <span>{dateStr}</span>
+                  {checked && <Check size={14} strokeWidth={2.5} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function MapView({ trip, spots = [] }) {
   const tripId = trip?.id;
+  const members = trip?.members || [];
+  const memberId = members[0]?.id || 1;
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const markersRef = useRef([]);
@@ -96,23 +207,25 @@ export default function MapView({ trip, spots = [] }) {
   }, [tripCategories]);
 
   // Infer trip dates (inclusive) from trip start_date and end_date.
-  // Trip start_date and end_date are required fields. If missing, treat as unexpected error.
-  const tripDates = useMemo(() => {
+  const tripDatesInfo = useMemo(() => {
     if (!trip?.start_date || !trip?.end_date) {
       return null;
     }
-    const dates = [];
+    const rawDates = [];
+    const formattedDates = [];
     const curr = new Date(trip.start_date);
     const end = new Date(trip.end_date);
     while (curr <= end) {
+      const iso = curr.toISOString().split("T")[0];
+      rawDates.push(iso);
       const formatted = curr.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      dates.push(formatted);
+      formattedDates.push(formatted);
       curr.setDate(curr.getDate() + 1);
     }
-    return dates.length > 0 ? dates : null;
+    return { rawDates, formattedDates };
   }, [trip]);
 
-  if (!tripDates) {
+  if (!tripDatesInfo) {
     return (
       <div style={{ padding: "40px 24px", color: "var(--color-rust)", fontFamily: "var(--font-inter), sans-serif", fontSize: "14px", textAlign: "center" }}>
         Unexpected error: Trip start and end dates are required.
@@ -120,31 +233,18 @@ export default function MapView({ trip, spots = [] }) {
     );
   }
 
-  const [selectedDate, setSelectedDate] = useState(tripDates[0] || "Jun 10");
+  const { rawDates, formattedDates } = tripDatesInfo;
+  const [selectedDate, setSelectedDate] = useState(formattedDates[0] || "Jun 10");
 
-  // Keep selectedDate valid if tripDates changes
   useEffect(() => {
-    if (tripDates.length > 0 && !tripDates.includes(selectedDate)) {
-      setSelectedDate(tripDates[0]);
+    if (formattedDates.length > 0 && !formattedDates.includes(selectedDate)) {
+      setSelectedDate(formattedDates[0]);
     }
-  }, [tripDates, selectedDate]);
+  }, [formattedDates, selectedDate]);
 
   const [hoveredSpotId, setHoveredSpotId] = useState(null);
   const [selectedSpotId, setSelectedSpotId] = useState(null);
   const [activeAccommodationId, setActiveAccommodationId] = useState(null);
-
-  // Personal day plan mapping by date: { [date]: [spotId, ...] }
-  const [planByDate, setPlanByDate] = useState({});
-
-  const togglePlan = (id, date) => {
-    setPlanByDate((prev) => {
-      const list = prev[date] || [];
-      const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-      return { ...prev, [date]: next };
-    });
-  };
-
-  const isAddedToPlan = (id, date) => (planByDate[date] || []).includes(id);
 
   // Initialize Google Maps
   useEffect(() => {
@@ -205,13 +305,12 @@ export default function MapView({ trip, spots = [] }) {
     });
   }, [spots]);
 
-  // TODO: Accommodation backend API integration
   const formattedAccommodations = useMemo(() => {
     return (trip?.accommodations || []).map((a) => ({
       ...a,
-      dateRange: tripDates,
+      dateRange: formattedDates,
     }));
-  }, [trip, tripDates]);
+  }, [trip, formattedDates]);
 
   const toggleCategory = (cat) => {
     setActiveCategories((prev) =>
@@ -247,104 +346,58 @@ export default function MapView({ trip, spots = [] }) {
     let hasPoints = false;
 
     visibleSpots.forEach((spot) => {
-      if (spot.latitude && spot.longitude) {
-        const position = { lat: spot.latitude, lng: spot.longitude };
-        const cat = spot.categories[0] || "Landmarks";
-        const color = categoryColors[cat] || "#2B6E6E";
+      if (!spot.latitude || !spot.longitude) return;
+      hasPoints = true;
+      const pos = { lat: spot.latitude, lng: spot.longitude };
+      bounds.extend(pos);
 
-        const svgMarker = {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          fillColor: color,
-          fillOpacity: 1,
-          scale: 8,
-          strokeColor: "#FAF7F1",
-          strokeWeight: 2,
-        };
+      const isSelected = spot.id === selectedSpotId;
+      const isHovered = spot.id === hoveredSpotId;
 
-        const marker = new window.google.maps.Marker({
-          position,
-          map,
-          title: spot.name,
-          icon: svgMarker,
-        });
+      const marker = new window.google.maps.Marker({
+        position: pos,
+        map,
+        title: spot.name,
+        zIndex: isSelected || isHovered ? 100 : 1,
+      });
 
-        marker.addListener("click", () => {
-          setSelectedSpotId(spot.id === selectedSpotId ? null : spot.id);
-        });
+      marker.addListener("click", () => {
+        setSelectedSpotId(spot.id);
+      });
 
-        markersRef.current.push(marker);
-        bounds.extend(position);
-        hasPoints = true;
-      }
+      markersRef.current.push(marker);
     });
 
-    relevantAccommodations.forEach((acc) => {
-      if (acc.latitude && acc.longitude) {
-        const position = { lat: acc.latitude, lng: acc.longitude };
-        const isActive = acc.id === effectiveActiveId;
-
-        const accMarker = {
-          path: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z",
-          fillColor: isActive ? "#1F2E35" : "#FFFFFF",
-          fillOpacity: 1,
-          scale: 1,
-          strokeColor: isActive ? "#C98A2E" : "#8A8270",
-          strokeWeight: 2,
-        };
-
-        const marker = new window.google.maps.Marker({
-          position,
-          map,
-          title: `Accommodation: ${acc.name}`,
-          icon: accMarker,
-          zIndex: isActive ? 10 : 5,
-        });
-
-        marker.addListener("click", () => {
-          if (hasOverlap) setActiveAccommodationId(acc.id);
-        });
-
-        markersRef.current.push(marker);
-        bounds.extend(position);
-        hasPoints = true;
-      }
-    });
-
-    if (hasPoints) {
+    if (hasPoints && visibleSpots.length > 0) {
       map.fitBounds(bounds);
     }
-  }, [map, visibleSpots, relevantAccommodations, effectiveActiveId, selectedSpotId, categoryColors]);
+  }, [map, visibleSpots, selectedSpotId, hoveredSpotId]);
 
   return (
-    <div style={{ width: "100%" }}>
-      <style>{`
-        .cat-chip, .accom-chip, .spot-list-row { cursor: pointer; user-select: none; }
-        .cat-chip:focus-visible, .accom-chip:focus-visible, .spot-list-row:focus-visible {
-          outline: 2px solid #C98A2E;
-          outline-offset: 2px;
-        }
-        .spot-list-row:hover { border-color: #C98A2E !important; }
-      `}</style>
-
-      {/* Category filter chips */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "18px", alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* Category Filter Pills */}
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "11px", color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginRight: "4px" }}>
+          Filter:
+        </span>
         {allCategories.map((cat) => {
-          const active = activeCategories.includes(cat);
+          const isActive = activeCategories.includes(cat);
           const color = categoryColors[cat] || "#2B6E6E";
           return (
             <button
               key={cat}
-              className="cat-chip"
               onClick={() => toggleCategory(cat)}
               style={{
-                fontFamily: "var(--font-ibm-plex-mono), monospace",
-                fontSize: "11px",
-                letterSpacing: "0.03em",
-                padding: "6px 12px",
-                borderRadius: "20px",
                 border: `1.5px solid ${color}`,
-                background: active ? color : "transparent",
-                color: active ? "#FAF7F1" : color,
+                background: isActive ? color : "#FFFFFF",
+                color: isActive ? "#FFFFFF" : color,
+                borderRadius: "8px",
+                padding: "6px 12px",
+                fontFamily: "var(--font-inter), sans-serif",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
               }}
             >
               {cat}
@@ -354,187 +407,55 @@ export default function MapView({ trip, spots = [] }) {
         {activeCategories.length > 0 && (
           <button
             onClick={() => setActiveCategories([])}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "3px",
-              border: "none",
-              background: "none",
-              color: "#8A8270",
-              fontFamily: "var(--font-inter), sans-serif",
-              fontSize: "12px",
-              cursor: "pointer",
-              padding: "6px 4px",
-            }}
+            style={{ border: "none", background: "none", color: "var(--color-muted)", fontFamily: "var(--font-inter), sans-serif", fontSize: "12px", cursor: "pointer", textDecoration: "underline", marginLeft: "4px" }}
           >
-            <X size={12} /> Clear
+            Clear filters
           </button>
         )}
       </div>
 
-      {/* Map + side list */}
-      <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* Google Map container */}
-        <div
-          style={{
-            position: "relative",
-            flex: "1 1 560px",
-            minWidth: "320px",
-            aspectRatio: "4 / 3",
-            borderRadius: "12px",
-            border: "1px solid #E4DDCE",
-            overflow: "hidden",
-            boxShadow: "0 1px 3px rgba(31,46,53,0.08)",
-            background: "#E2E8F0",
-          }}
-        >
-          <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
-
-          {/* Accommodation overlay */}
+      {/* Map and Side List Layout */}
+      <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+        {/* Map Container */}
+        <div style={{ flex: 1, minWidth: "300px", position: "relative" }}>
           <div
+            ref={mapRef}
             style={{
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              zIndex: 6,
-              background: "#FAF7F1",
-              border: "1px solid #E4DDCE",
-              borderRadius: "10px",
-              padding: "10px 12px",
-              boxShadow: "0 2px 8px rgba(31,46,53,0.12)",
-              maxWidth: "220px",
+              width: "100%",
+              height: "480px",
+              borderRadius: "14px",
+              border: "1px solid var(--color-border)",
+              background: "#F4EFE6",
             }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-                fontFamily: "var(--font-ibm-plex-mono), monospace",
-                fontSize: "10px",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                color: "#8A8270",
-                marginBottom: "6px",
-              }}
-            >
-              <Home size={11} strokeWidth={2} />
-              Accommodation
-            </div>
-            <select
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                width: "100%",
-                fontFamily: "var(--font-inter), sans-serif",
-                fontSize: "12.5px",
-                color: "#1F2E35",
-                border: "1px solid #E4DDCE",
-                borderRadius: "6px",
-                padding: "5px 7px",
-                marginBottom: "8px",
-                background: "#FFFFFF",
-              }}
-            >
-              {tripDates.map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-            </select>
+          />
 
-            {relevantAccommodations.length === 0 && (
-              <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: "12px", color: "#A99F8B" }}>
-                No Accommodation set for {selectedDate}.
-              </div>
-            )}
-
-            {!hasOverlap && relevantAccommodations.length === 1 && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontFamily: "var(--font-inter), sans-serif",
-                  fontSize: "12.5px",
-                  fontWeight: 500,
-                  color: "#1F2E35",
-                }}
-              >
-                <Home size={12} strokeWidth={2} />
-                {relevantAccommodations[0].name}
-              </div>
-            )}
-
-            {hasOverlap && (
-              <div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-inter), sans-serif",
-                    fontSize: "11px",
-                    color: "#8A6017",
-                    marginBottom: "5px",
-                  }}
-                >
-                  2 overlap — set active:
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  {relevantAccommodations.map((a) => {
-                    const active = a.id === effectiveActiveId;
-                    return (
-                      <button
-                        key={a.id}
-                        className="accom-chip"
-                        onClick={() => setActiveAccommodationId(a.id)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "5px",
-                          fontFamily: "var(--font-inter), sans-serif",
-                          fontSize: "12px",
-                          fontWeight: 500,
-                          padding: "5px 9px",
-                          borderRadius: "6px",
-                          border: `1.5px solid ${active ? "#1F2E35" : "#E4DDCE"}`,
-                          background: active ? "#1F2E35" : "#FFFFFF",
-                          color: active ? "#FAF7F1" : "#1F2E35",
-                          textAlign: "left",
-                        }}
-                      >
-                        <Home size={11} strokeWidth={2} />
-                        {a.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Selected Spot Popover Card */}
+          {/* Floating Selected Spot Card Overlay */}
           {selectedSpot && (
             <div
               style={{
                 position: "absolute",
                 bottom: "16px",
                 left: "16px",
+                right: "16px",
                 background: "#FFFFFF",
-                border: "1px solid #E4DDCE",
-                borderRadius: "10px",
-                padding: "12px 14px",
-                width: "240px",
-                boxShadow: "0 6px 18px rgba(31,46,53,0.25)",
+                border: "1.5px solid var(--color-ink)",
+                borderRadius: "12px",
+                padding: "16px",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                 zIndex: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
                   <div
                     style={{
-                      fontFamily: "var(--font-inter), sans-serif",
+                      fontFamily: "var(--font-fraunces), serif",
                       fontWeight: 600,
-                      fontSize: "13.5px",
-                      color: "#1F2E35",
+                      fontSize: "16px",
+                      color: "var(--color-ink)",
                       marginBottom: "2px",
                     }}
                   >
@@ -562,17 +483,20 @@ export default function MapView({ trip, spots = [] }) {
                 </button>
               </div>
 
-              <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", marginBottom: "8px" }}>
+              <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
                 {selectedSpot.categories.map((c) => (
                   <StampBadge key={c} label={c} categoryColors={categoryColors} />
                 ))}
               </div>
 
-              <AddToPlanControl
-                date={selectedDate}
-                added={isAddedToPlan(selectedSpot.id, selectedDate)}
-                onToggle={() => togglePlan(selectedSpot.id, selectedDate)}
-              />
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: "4px" }}>
+                <AddToPlanDropdown
+                  spotId={selectedSpot.id}
+                  tripId={tripId}
+                  memberId={memberId}
+                  rawDates={rawDates}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -591,7 +515,7 @@ export default function MapView({ trip, spots = [] }) {
           >
             {visibleSpots.length} Spots shown
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "480px", overflowY: "auto" }}>
             {visibleSpots.map((spot) => {
               const isSelected = spot.id === selectedSpotId;
               return (
@@ -623,7 +547,7 @@ export default function MapView({ trip, spots = [] }) {
                       flexShrink: 0,
                     }}
                   />
-                  <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ minWidth: "0", flex: 1 }}>
                     <div
                       style={{
                         fontFamily: "var(--font-inter), sans-serif",
@@ -639,10 +563,11 @@ export default function MapView({ trip, spots = [] }) {
                     </div>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
-                    <AddToPlanControl
-                      date={selectedDate}
-                      added={isAddedToPlan(spot.id, selectedDate)}
-                      onToggle={() => togglePlan(spot.id, selectedDate)}
+                    <AddToPlanDropdown
+                      spotId={spot.id}
+                      tripId={tripId}
+                      memberId={memberId}
+                      rawDates={rawDates}
                       compact
                     />
                   </div>
@@ -658,7 +583,7 @@ export default function MapView({ trip, spots = [] }) {
                   padding: "10px 4px",
                 }}
               >
-                No Spots match the selected Categories.
+                No spots match current filters.
               </div>
             )}
           </div>
