@@ -5,7 +5,7 @@ import { MapPin, Plane, Home, Plus, Users, Tag } from "lucide-react";
 const ADD_MENU_ITEMS = [
   { key: "spot", label: "Add a Spot", icon: MapPin },
   { key: "category", label: "Add Category", icon: Tag },
-  { key: "flight", label: "Add Flight Details", icon: Plane },
+  { key: "flight", label: "Flight Details", icon: Plane },
   { key: "accommodation", label: "Add Accommodation", icon: Home },
   { key: "attendees", label: "Add Attendee(s)", icon: Users },
 ];
