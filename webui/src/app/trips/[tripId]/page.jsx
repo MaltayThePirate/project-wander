@@ -14,6 +14,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import AddMenuButton from "@/components/trip/AddMenuButton";
 import AddSpotForm from "@/components/trip/AddSpotForm";
 import EditTripModal from "@/components/trip/EditTripModal";
+import FlightModal from "@/components/trip/FlightModal";
 import SpotCard from "@/components/trip/SpotCard";
 
 export default function TripHomePage() {
@@ -28,6 +29,7 @@ export default function TripHomePage() {
   const [showAddSpotForm, setShowAddSpotForm] = useState(false);
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
   const [showEditTripModal, setShowEditTripModal] = useState(false);
+  const [showFlightModal, setShowFlightModal] = useState(false);
 
   const tripQuery = useQuery({
     queryKey: ["trip", tripId],
@@ -48,6 +50,10 @@ export default function TripHomePage() {
     }
     if (key === "category") {
       setShowAddCategoryForm(true);
+      return;
+    }
+    if (key === "flight") {
+      setShowFlightModal(true);
       return;
     }
     setNote(label);
@@ -99,6 +105,10 @@ export default function TripHomePage() {
 
         {showEditTripModal && (
           <EditTripModal trip={trip} onClose={() => setShowEditTripModal(false)} />
+        )}
+
+        {showFlightModal && (
+          <FlightModal trip={trip} onClose={() => setShowFlightModal(false)} />
         )}
 
         {showAddSpotForm && (

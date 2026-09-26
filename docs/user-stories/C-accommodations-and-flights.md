@@ -5,13 +5,13 @@ User stories covering per-member flight details, accommodation date ranges, over
 ## Stories
 
 ### R1-C-01: Per-Member Flights
-- **Status:** ⬜ Not started
+- **Status:** ✅ Done
 - **Role:** Trip Planner
 - **FR Mapping:** FR-3a
 - **Description:** As a Trip Planner, I can enter my own arrival and departure flight details, so I have a personal reference point when deciding on Accommodations.
 
 ### R1-C-02: Flight Window Validation Warning
-- **Status:** ⬜ Not started
+- **Status:** ✅ Done
 - **Role:** Trip Planner
 - **FR Mapping:** FR-3a
 - **Description:** As a Trip Planner, I want a warning (not a block) if my flight dates fall outside the Trip Window, so I'm alerted to a likely mistake without losing my data.
