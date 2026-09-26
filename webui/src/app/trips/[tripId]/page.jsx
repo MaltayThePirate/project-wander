@@ -13,7 +13,7 @@ import { formatShortDate } from "@/lib/format";
 import PageHeader from "@/components/layout/PageHeader";
 import AddMenuButton from "@/components/trip/AddMenuButton";
 import AddSpotForm from "@/components/trip/AddSpotForm";
-import AddCategoryForm from "@/components/trip/AddCategoryForm";
+import EditTripModal from "@/components/trip/EditTripModal";
 import SpotCard from "@/components/trip/SpotCard";
 
 export default function TripHomePage() {
@@ -27,6 +27,7 @@ export default function TripHomePage() {
   const [note, setNote] = useState(null);
   const [showAddSpotForm, setShowAddSpotForm] = useState(false);
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+  const [showEditTripModal, setShowEditTripModal] = useState(false);
 
   const tripQuery = useQuery({
     queryKey: ["trip", tripId],
@@ -83,13 +84,22 @@ export default function TripHomePage() {
   return (
     <div style={{ padding: "28px 24px 60px" }}>
       <div style={{ maxWidth: "1040px", margin: "0 auto" }}>
-        <PageHeader eyebrow={`${trip.name} · ${dateRangeLabel}`} title="Spots">
+        <PageHeader
+          eyebrow={`${trip.name} · ${dateRangeLabel}`}
+          title="Spots"
+          eyebrowClickable={true}
+          onEyebrowClick={() => setShowEditTripModal(true)}
+        >
           <AddMenuButton
             isOpen={headerMenuOpen}
             onToggleOpen={() => setHeaderMenuOpen((v) => !v)}
             onSelect={handleSelect}
           />
         </PageHeader>
+
+        {showEditTripModal && (
+          <EditTripModal trip={trip} onClose={() => setShowEditTripModal(false)} />
+        )}
 
         {showAddSpotForm && (
           <div
