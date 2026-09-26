@@ -13,22 +13,42 @@ class DayPlansController < ApplicationController
   end
 
   # POST /trips/:trip_id/day-plans/:member_id/:date
+  # Acts as an upsert/sync for the day plan and its ordered spot assignments.
+  # If the day plan record doesn't exist for this trip, member, and date yet,
+  # it initializes and saves a new one. Then, it synchronizes the associated
+  # spots and their relative ranks (supporting both full reordering and appending/updating).
   def create
     @day_plan = @trip.day_plans.find_or_initialize_by(user: @user, date: params[:date])
 
     ActiveRecord::Base.transaction do
+      # Ensure the DayPlan header record is persisted before associating spots
       if @day_plan.new_record? && !@day_plan.save
         render json: { errors: @day_plan.errors.full_messages }, status: :unprocessable_entity
         raise ActiveRecord::Rollback
       end
 
+      # If a list of spots is provided in the request payload, synchronize them.
+      # This handles both full ordering updates (drag-and-drop / reordering)
+      # and incremental additions/updates to the day's itinerary.
       if params[:spots].is_a?(Array)
-        @day_plan.day_plan_spots.destroy_all
+        existing_spots = @day_plan.day_plan_spots.index_by(&:spot_id)
+        incoming_spot_ids = []
+
         params[:spots].each_with_index do |spot_item, index|
           spot_id = spot_item[:spot_id] || spot_item["spot_id"]
           rank = spot_item[:rank] || spot_item["rank"] || index
-          @day_plan.day_plan_spots.create!(spot_id: spot_id, rank: rank)
+          incoming_spot_ids << spot_id.to_i
+
+          dps = existing_spots[spot_id.to_i]
+          if dps
+            dps.update!(rank: rank)
+          else
+            @day_plan.day_plan_spots.create!(spot_id: spot_id, rank: rank)
+          end
         end
+
+        # Remove any spots that were unassigned/removed in this update sync
+        @day_plan.day_plan_spots.where.not(spot_id: incoming_spot_ids).destroy_all
       end
 
       render json: day_plan_json(@day_plan.reload), status: :ok
@@ -73,3 +93,4 @@ class DayPlansController < ApplicationController
     }
   end
 end
+
