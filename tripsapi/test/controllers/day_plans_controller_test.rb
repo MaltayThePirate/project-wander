@@ -29,7 +29,7 @@ class DayPlansControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should create or update day plan spots and ranking" do
-    post trip_day_plans_url(@trip, member_id: @user.id, date: "2026-11-02"), params: {
+    put trip_day_plans_url(@trip, member_id: @user.id, date: "2026-11-02"), params: {
       spots: [
         { spot_id: @spot.id, rank: 0 }
       ]

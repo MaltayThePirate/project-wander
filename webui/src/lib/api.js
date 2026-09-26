@@ -28,3 +28,10 @@ export function apiPost(path, data) {
     body: JSON.stringify(data),
   });
 }
+
+export function apiPut(path, data) {
+  return request(path, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}

@@ -13,7 +13,7 @@ Rails.application.routes.draw do
     end
     resources :categories, only: [ :index, :create ]
     get "day-plans/:member_id/:date", to: "day_plans#show", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
-    post "day-plans/:member_id/:date", to: "day_plans#create", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    put "day-plans/:member_id/:date", to: "day_plans#update", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
   end
 
   # Defines the root path route ("/")

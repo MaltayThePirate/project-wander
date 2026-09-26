@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, GripVertical } from "lucide-react";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPut } from "@/lib/api";
 
 export default function DayPlanView({ trip }) {
   const queryClient = useQueryClient();
@@ -29,7 +29,7 @@ export default function DayPlanView({ trip }) {
 
   const saveMutation = useMutation({
     mutationFn: (newSpots) =>
-      apiPost(`/trips/${trip.id}/day-plans/${selectedMemberId}/${selectedDate}`, {
+      apiPut(`/trips/${trip.id}/day-plans/${selectedMemberId}/${selectedDate}`, {
         spots: newSpots.map((s, index) => ({ spot_id: s.id, rank: index })),
       }),
     onSuccess: () => {

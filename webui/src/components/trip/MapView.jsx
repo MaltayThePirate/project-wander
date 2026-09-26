@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Home, Info, X, Plus, Check } from "lucide-react";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPut } from "@/lib/api";
 
 const STAMP_TILT = -1.5;
 
@@ -92,7 +92,7 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
       } else {
         spots = spots.filter((s) => s.id !== spotId);
       }
-      return apiPost(`/trips/${tripId}/day-plans/${memberId}/${date}`, {
+      return apiPut(`/trips/${tripId}/day-plans/${memberId}/${date}`, {
         spots: spots.map((s, idx) => ({ spot_id: s.id, rank: idx })),
       });
     },

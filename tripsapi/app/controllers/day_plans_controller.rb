@@ -12,8 +12,8 @@ class DayPlansController < ApplicationController
     end
   end
 
-  # POST /trips/:trip_id/day-plans/:member_id/:date
-  def create
+  # PUT /trips/:trip_id/day-plans/:member_id/:date
+  def update
     @day_plan = @trip.day_plans.find_or_initialize_by(user: @user, date: params[:date])
 
     ActiveRecord::Base.transaction do
