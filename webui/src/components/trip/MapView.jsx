@@ -35,7 +35,6 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -50,7 +49,6 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
     };
   }, [isOpen]);
 
-  // Helper to format YYYY-MM-DD into MM/DD
   const formatMMDD = (isoStr) => {
     if (!isoStr) return "";
     const parts = isoStr.split("-");
@@ -60,7 +58,6 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
     return isoStr;
   };
 
-  // Fetch day plans for all trip dates for this member
   const dateQueries = useQuery({
     queryKey: ["trip", tripId, "spot-day-plans", spotId, memberId],
     queryFn: async () => {
@@ -209,7 +206,6 @@ export default function MapView({ trip, spots = [] }) {
 
   const [activeCategories, setActiveCategories] = useState([]);
   
-  // Fetch categories dynamically from database
   const categoriesQuery = useQuery({
     queryKey: ["trip", tripId, "categories"],
     queryFn: () => apiGet(`/trips/${tripId}/categories`),
@@ -218,7 +214,6 @@ export default function MapView({ trip, spots = [] }) {
 
   const tripCategories = categoriesQuery.data || [];
   
-  // Build lowercase categoryColors and allCategories dynamically from fetched categories
   const categoryColors = useMemo(() => {
     const map = {};
     tripCategories.forEach((cat) => {
@@ -231,7 +226,6 @@ export default function MapView({ trip, spots = [] }) {
     return tripCategories.map((cat) => cat.name);
   }, [tripCategories]);
 
-  // Infer trip dates (inclusive) from trip start_date and end_date.
   const tripDatesInfo = useMemo(() => {
     if (!trip?.start_date || !trip?.end_date) {
       return null;
@@ -360,7 +354,7 @@ export default function MapView({ trip, spots = [] }) {
 
   const selectedSpot = selectedSpotId ? formattedSpots.find((s) => s.id === selectedSpotId) : null;
 
-  // Render styled markers on Google Map instance
+  // Render custom colored circle dot markers on Google Map instance
   useEffect(() => {
     if (!map || !window.google || !window.google.maps) return;
 
@@ -378,11 +372,26 @@ export default function MapView({ trip, spots = [] }) {
 
       const isSelected = spot.id === selectedSpotId;
       const isHovered = spot.id === hoveredSpotId;
+      const primaryCat = spot.categories[0] || "Landmarks";
+      const color = categoryColors[primaryCat] || "#2B6E6E";
+
+      const scale = isSelected || isHovered ? 1.4 : 1.0;
+
+      // Custom SVG dot marker
+      const svgIcon = {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        fillColor: color,
+        fillOpacity: 1,
+        strokeColor: "#FFFFFF",
+        strokeWeight: 2.5,
+        scale: 8 * scale,
+      };
 
       const marker = new window.google.maps.Marker({
         position: pos,
         map,
         title: spot.name,
+        icon: svgIcon,
         zIndex: isSelected || isHovered ? 100 : 1,
       });
 
@@ -396,7 +405,7 @@ export default function MapView({ trip, spots = [] }) {
     if (hasPoints && visibleSpots.length > 0) {
       map.fitBounds(bounds);
     }
-  }, [map, visibleSpots, selectedSpotId, hoveredSpotId]);
+  }, [map, visibleSpots, selectedSpotId, hoveredSpotId, categoryColors]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
