@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_17_204111) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_26_041726) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
@@ -23,6 +23,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_17_204111) do
     t.datetime "updated_at", null: false
     t.index ["trip_id", "name"], name: "index_categories_on_trip_id_and_name", unique: true
     t.index ["trip_id"], name: "index_categories_on_trip_id"
+  end
+
+  create_table "day_plan_spots", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "day_plan_id", null: false
+    t.integer "rank", default: 0, null: false
+    t.bigint "spot_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["day_plan_id", "spot_id"], name: "index_day_plan_spots_on_day_plan_and_spot", unique: true
+    t.index ["day_plan_id"], name: "index_day_plan_spots_on_day_plan_id"
+    t.index ["spot_id"], name: "index_day_plan_spots_on_spot_id"
+  end
+
+  create_table "day_plans", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["trip_id", "user_id", "date"], name: "index_day_plans_on_trip_user_and_date", unique: true
+    t.index ["trip_id"], name: "index_day_plans_on_trip_id"
+    t.index ["user_id"], name: "index_day_plans_on_user_id"
   end
 
   create_table "spot_categories", force: :cascade do |t|
@@ -78,6 +100,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_17_204111) do
   end
 
   add_foreign_key "categories", "trips"
+  add_foreign_key "day_plan_spots", "day_plans"
+  add_foreign_key "day_plan_spots", "spots"
+  add_foreign_key "day_plans", "trips"
+  add_foreign_key "day_plans", "users"
   add_foreign_key "spot_categories", "categories"
   add_foreign_key "spot_categories", "spots"
   add_foreign_key "spots", "trips"

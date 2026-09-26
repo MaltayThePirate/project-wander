@@ -5,21 +5,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 
-async function createTrip(tripData) {
-  const response = await fetch("http://localhost:3001/trips", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ trip: tripData }),
-  });
-
-  if (!response.ok) {
-    const body = await response.json();
-    throw new Error(body.errors?.join(", ") || "Failed to create trip");
-  }
-
-  return response.json();
-}
-
 export default function TripCreationPage() {
   const router = useRouter();
   const [tripName, setTripName] = useState("");
