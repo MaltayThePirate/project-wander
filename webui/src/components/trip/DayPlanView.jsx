@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, GripVertical } from "lucide-react";
 import { apiGet, apiPut } from "@/lib/api";
+import DeleteButton from "@/components/ui/DeleteButton";
 
 export default function DayPlanView({ trip }) {
   const queryClient = useQueryClient();
@@ -248,13 +249,11 @@ export default function DayPlanView({ trip }) {
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <button
+                    <DeleteButton
                       onClick={() => handleRemoveSpot(spot.id)}
                       title="Remove from day plan"
-                      style={{ border: "none", background: "none", color: "var(--color-rust)", cursor: "pointer", padding: "6px", display: "flex" }}
-                    >
-                      <Trash2 size={16} strokeWidth={2} />
-                    </button>
+                      size={16}
+                    />
                   </div>
                 </div>
               );

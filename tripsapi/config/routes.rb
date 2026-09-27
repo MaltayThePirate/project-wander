@@ -13,6 +13,8 @@ Rails.application.routes.draw do
     end
     resources :categories, only: [ :index, :create ]
     resource :flight, only: [ :show, :create, :update ]
+    resources :accommodations, only: [ :index, :create, :update, :destroy ]
+    get "day-plans/:member_id", to: "day_plans#index", as: :trip_day_plans_index, constraints: { member_id: /\d+/ }
     get "day-plans/:member_id/:date", to: "day_plans#show", as: :trip_day_plan, constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     put "day-plans/:member_id/:date", to: "day_plans#update", as: :update_trip_day_plan, constraints: { date: /\d{4}-\d{2}-\d{2}/ }
   end

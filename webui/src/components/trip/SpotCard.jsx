@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { MapPin, ExternalLink, Trash2 } from "lucide-react";
+import { MapPin, ExternalLink } from "lucide-react";
+import DeleteButton from "@/components/ui/DeleteButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import SpotPhoto from "@/components/trip/SpotPhoto";
 import { apiDelete } from "@/lib/api";
@@ -157,7 +158,7 @@ export default function SpotCard({ spot, view }) {
                 </a>
 
                 {isOwner && (
-                    <button
+                    <DeleteButton
                         onClick={() => {
                             if (confirm(`Delete "${spot.name}"?`)) {
                                 deleteMutation.mutate();
@@ -165,18 +166,8 @@ export default function SpotCard({ spot, view }) {
                         }}
                         disabled={deleteMutation.isPending}
                         title="Delete spot"
-                        style={{
-                            border: "none",
-                            background: "transparent",
-                            color: "var(--color-muted)",
-                            cursor: "pointer",
-                            display: "flex",
-                            padding: "4px",
-                            borderRadius: "4px",
-                        }}
-                    >
-                        <Trash2 size={14} />
-                    </button>
+                        size={14}
+                    />
                 )}
             </div>
         </div>

@@ -10,10 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_26_221946) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_041556) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "postgis"
+
+  create_table "accommodations", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "address"
+    t.datetime "created_at", null: false
+    t.date "end_date", null: false
+    t.float "latitude"
+    t.float "longitude"
+    t.string "name", null: false
+    t.date "start_date", null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_accommodations_on_trip_id"
+  end
 
   create_table "categories", force: :cascade do |t|
     t.string "color", null: false
@@ -115,6 +129,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_221946) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "accommodations", "trips"
   add_foreign_key "categories", "trips"
   add_foreign_key "day_plan_spots", "day_plans"
   add_foreign_key "day_plan_spots", "spots"

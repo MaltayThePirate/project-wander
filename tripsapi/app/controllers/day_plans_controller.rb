@@ -2,6 +2,12 @@ class DayPlansController < ApplicationController
   before_action :set_trip
   before_action :set_user
 
+  # GET /trips/:trip_id/day-plans/:member_id
+  def index
+    day_plans = @trip.day_plans.includes(day_plan_spots: :spot).where(user: @user)
+    render json: day_plans.map { |dp| day_plan_json(dp) }
+  end
+
   # GET /trips/:trip_id/day-plans/:member_id/:date
   def show
     @day_plan = @trip.day_plans.find_by(user: @user, date: params[:date])

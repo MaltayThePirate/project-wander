@@ -38,10 +38,10 @@ module Geocoding
       parse(response)
     end
 
-    def self.fetch_reverse_geocoded_address(lat, lng)
+    def self.geocode_address(address_str)
       uri = URI("https://maps.googleapis.com/maps/api/geocode/json")
       uri.query = URI.encode_www_form(
-        latlng: "#{lat},#{lng}",
+        address: address_str,
         key: Rails.application.credentials.google_maps[:geocoding_api_key]
       )
 
@@ -51,7 +51,16 @@ module Geocoding
       body = JSON.parse(response.body)
       return nil unless body["status"] == "OK" && body["results"].present?
 
-      body["results"].first["formatted_address"]
+      result = body["results"].first
+      location = result.dig("geometry", "location")
+
+      Geocoding::Result.new(
+        name: result["formatted_address"],
+        address: result["formatted_address"],
+        latitude: location["lat"],
+        longitude: location["lng"],
+        photo_reference: nil
+      )
     rescue StandardError
       nil
     end

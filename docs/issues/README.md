@@ -18,6 +18,7 @@ This directory contains markdown definitions for all outstanding Release 1 user 
 3. **[R1-C-03 to R1-C-05: Accommodations & Active Accommodation Selection](r1-c-accommodations.md)**
    - *Area:* Accommodations & Flights (Area C)
    - *FR:* FR-4
+   - *Status:* ✅ Implemented
    - *Description:* Implement `Accommodation` model, date range validation, overlap warning handling, and manual "Active Accommodation" selection for overlapping dates.
 
 4. **[R1-D-01: Map View with Google Maps JS SDK](r1-d-map-view.md)**
