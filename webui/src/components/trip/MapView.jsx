@@ -31,7 +31,7 @@ export function StampBadge({ label, categoryColors }) {
   );
 }
 
-export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact }) {
+export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact, dayPlansData }) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -44,32 +44,23 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
     return isoStr;
   };
 
-  const dateQueries = useQuery({
-    queryKey: ["trip", tripId, "spot-day-plans", spotId, memberId],
-    queryFn: async () => {
-      const results = {};
-      for (const d of rawDates) {
-        try {
-          const data = await apiGet(`/trips/${tripId}/day-plans/${memberId}/${d}`);
-          const hasSpot = (data?.spots || []).some((s) => s.id === spotId);
-          results[d] = hasSpot;
-        } catch {
-          results[d] = false;
-        }
-      }
-      return results;
-    },
-    enabled: !!tripId && !!memberId && rawDates.length > 0,
-  });
+  const assignedMap = useMemo(() => {
+    const results = {};
+    rawDates.forEach((d) => {
+      const plan = (dayPlansData || []).find((dp) => dp.date === d);
+      const hasSpot = (plan?.spots || []).some((s) => s.id === spotId);
+      results[d] = hasSpot;
+    });
+    return results;
+  }, [dayPlansData, rawDates, spotId]);
 
-  const assignedMap = dateQueries.data || {};
   const assignedDates = Object.entries(assignedMap)
     .filter(([_, isAssigned]) => isAssigned)
     .map(([dateStr]) => dateStr);
 
   const mutation = useMutation({
     mutationFn: async ({ date, assign }) => {
-      const current = await apiGet(`/trips/${tripId}/day-plans/${memberId}/${date}`).catch(() => ({ spots: [] }));
+      const current = (dayPlansData || []).find((dp) => dp.date === date) || { spots: [] };
       let spots = current?.spots || [];
       if (assign) {
         if (!spots.some((s) => s.id === spotId)) {
@@ -83,8 +74,8 @@ export function AddToPlanDropdown({ spotId, tripId, memberId, rawDates, compact 
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["trip", tripId, "spot-day-plans", spotId, memberId]);
-      queryClient.invalidateQueries(["trip", tripId, "day-plan"]);
+      queryClient.invalidateQueries({ queryKey: ["trip", tripId, "day-plans", memberId] });
+      queryClient.invalidateQueries({ queryKey: ["trip", tripId, "day-plan"] });
     },
   });
 
@@ -240,6 +231,13 @@ export default function MapView({ trip, spots = [] }) {
     enabled: !!tripId,
   });
   const accommodations = accommodationsQuery.data || trip?.accommodations || [];
+
+  const dayPlansQuery = useQuery({
+    queryKey: ["trip", tripId, "day-plans", memberId],
+    queryFn: () => apiGet(`/trips/${tripId}/day-plans/${memberId}`),
+    enabled: !!tripId && !!memberId,
+  });
+  const dayPlansData = dayPlansQuery.data || [];
 
   useEffect(() => {
     if (formattedDates.length > 0 && !formattedDates.includes(selectedDate)) {
@@ -758,6 +756,7 @@ export default function MapView({ trip, spots = [] }) {
                   tripId={tripId}
                   memberId={memberId}
                   rawDates={rawDates}
+                  dayPlansData={dayPlansData}
                 />
               </div>
             </div>
@@ -832,6 +831,7 @@ export default function MapView({ trip, spots = [] }) {
                       memberId={memberId}
                       rawDates={rawDates}
                       compact
+                      dayPlansData={dayPlansData}
                     />
                   </div>
                 </div>

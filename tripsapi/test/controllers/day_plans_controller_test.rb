@@ -28,6 +28,19 @@ class DayPlansControllerTest < ActionDispatch::IntegrationTest
     assert_empty json["spots"]
   end
 
+  test "should get index of day plans for member" do
+    put "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", params: {
+      spots: [ { spot_id: @spot.id, rank: 0 } ]
+    }, as: :json
+
+    get "/trips/#{@trip.id}/day-plans/#{@user.id}"
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal 1, json.length
+    assert_equal "2026-11-02", json[0]["date"]
+    assert_equal 1, json[0]["spots"].length
+  end
+
   test "should create or update day plan spots and ranking" do
     put "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", params: {
       spots: [
