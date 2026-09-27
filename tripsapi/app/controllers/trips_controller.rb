@@ -40,6 +40,18 @@ class TripsController < ApplicationController
       name: trip.name,
       start_date: trip.start_date,
       end_date: trip.end_date,
+      accommodations: trip.accommodations.order(start_date: :asc).map { |acc|
+        {
+          id: acc.id,
+          name: acc.name,
+          address: acc.address,
+          start_date: acc.start_date,
+          end_date: acc.end_date,
+          active: acc.active,
+          latitude: acc.latitude,
+          longitude: acc.longitude
+        }
+      },
       members: trip.trip_memberships.includes(:user).map { |m|
         {
           id: m.user.id,

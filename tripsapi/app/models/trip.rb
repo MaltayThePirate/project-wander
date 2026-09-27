@@ -5,6 +5,7 @@ class Trip < ApplicationRecord
   has_many :categories, dependent: :destroy
   has_many :day_plans, dependent: :destroy
   has_many :flights, dependent: :destroy
+  has_many :accommodations, dependent: :destroy
 
   STARTER_CATEGORIES = [
     { name: "Places to Eat", color: "#B8462F" },
@@ -18,21 +19,13 @@ class Trip < ApplicationRecord
 
   validates :name, presence: true
   validates :start_date, presence: true
-  validates :end_date, presence: true
-  validate :end_date_on_or_after_start_date
+  validates :end_date, presence: true, date_range: { start_date: :start_date }
   validate :no_out_of_range_day_plans_with_spots, on: :update
 
   private
 
   def seed_default_categories
     STARTER_CATEGORIES.each { |attrs| categories.create!(attrs) }
-  end
-
-  def end_date_on_or_after_start_date
-    return if start_date.blank? || end_date.blank?
-    return if end_date >= start_date
-
-    errors.add(:end_date, "must be on or after the start date")
   end
 
   def no_out_of_range_day_plans_with_spots

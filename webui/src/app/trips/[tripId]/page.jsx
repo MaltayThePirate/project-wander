@@ -3,7 +3,7 @@
 import { useState } from "react";
 import React from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, LayoutGrid, List as ListIcon, Map, Info, X } from "lucide-react";
 import MapView from "@/components/trip/MapView";
 import DayPlanView from "@/components/trip/DayPlanView";
@@ -16,6 +16,8 @@ import AddSpotForm from "@/components/trip/AddSpotForm";
 import EditTripModal from "@/components/trip/EditTripModal";
 import FlightModal from "@/components/trip/FlightModal";
 import FlightSummary from "@/components/trip/FlightSummary";
+import AccommodationModal from "@/components/trip/AccommodationModal";
+import AccommodationSummary from "@/components/trip/AccommodationSummary";
 import SpotCard from "@/components/trip/SpotCard";
 
 export default function TripHomePage() {
@@ -32,7 +34,9 @@ export default function TripHomePage() {
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
   const [showEditTripModal, setShowEditTripModal] = useState(false);
   const [showFlightModal, setShowFlightModal] = useState(false);
+  const [showAccommodationModal, setShowAccommodationModal] = useState(false);
 
+  const queryClient = useQueryClient();
   const tripQuery = useQuery({
     queryKey: ["trip", tripId],
     queryFn: () => apiGet(`/trips/${tripId}`),
@@ -56,6 +60,10 @@ export default function TripHomePage() {
     }
     if (key === "flight") {
       setShowFlightModal(true);
+      return;
+    }
+    if (key === "accommodation") {
+      setShowAccommodationModal(true);
       return;
     }
     setNote(label);
@@ -156,6 +164,22 @@ export default function TripHomePage() {
               >
                 Flight Details
               </button>
+              <button
+                onClick={() => setActiveTab("accommodations")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--color-border)",
+                  background: activeTab === "accommodations" ? "var(--color-ink)" : "#FFFFFF",
+                  color: activeTab === "accommodations" ? "var(--color-parchment)" : "var(--color-ink)",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Accommodations
+              </button>
               <AddMenuButton
                 isOpen={headerMenuOpen}
                 onToggleOpen={() => setHeaderMenuOpen((v) => !v)}
@@ -171,6 +195,10 @@ export default function TripHomePage() {
 
         {showFlightModal && (
           <FlightModal trip={trip} onClose={() => setShowFlightModal(false)} />
+        )}
+
+        {showAccommodationModal && (
+          <AccommodationModal trip={trip} onClose={() => setShowAccommodationModal(false)} queryClient={queryClient} />
         )}
 
         {showAddSpotForm && (
@@ -348,6 +376,8 @@ export default function TripHomePage() {
 
         {activeTab === "flights" ? (
           <FlightSummary trip={trip} onEdit={() => setShowFlightModal(true)} />
+        ) : activeTab === "accommodations" ? (
+          <AccommodationSummary trip={trip} onEdit={() => setShowAccommodationModal(true)} queryClient={queryClient} />
         ) : view === "day-plan" ? (
           <DayPlanView trip={trip} />
         ) : spots.length === 0 ? (

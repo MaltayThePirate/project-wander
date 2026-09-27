@@ -3,7 +3,7 @@
 - **Product Area:** Area C (Accommodations & Flights)
 - **User Story:** R1-C-03, R1-C-04, R1-C-05
 - **Functional Requirement:** FR-4
-- **Status:** ⬜ Not Started
+- **Status:** ✅ Implemented
 
 ## User Stories
 - As a Trip Planner, I can add one or more Accommodations with their own date ranges, so the group knows where we're staying and when.

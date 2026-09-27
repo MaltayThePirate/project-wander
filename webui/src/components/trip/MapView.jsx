@@ -234,6 +234,13 @@ export default function MapView({ trip, spots = [] }) {
   const { rawDates, formattedDates } = tripDatesInfo;
   const [selectedDate, setSelectedDate] = useState(formattedDates[0] || "Jun 10");
 
+  const accommodationsQuery = useQuery({
+    queryKey: ["trip", tripId, "accommodations"],
+    queryFn: () => apiGet(`/trips/${tripId}/accommodations`),
+    enabled: !!tripId,
+  });
+  const accommodations = accommodationsQuery.data || trip?.accommodations || [];
+
   useEffect(() => {
     if (formattedDates.length > 0 && !formattedDates.includes(selectedDate)) {
       setSelectedDate(formattedDates[0]);
@@ -242,6 +249,7 @@ export default function MapView({ trip, spots = [] }) {
 
   const [hoveredSpotId, setHoveredSpotId] = useState(null);
   const [selectedSpotId, setSelectedSpotId] = useState(null);
+  const [selectedAccommodationId, setSelectedAccommodationId] = useState(null);
   const [activeAccommodationId, setActiveAccommodationId] = useState(null);
 
   // Initialize Google Maps
@@ -304,11 +312,23 @@ export default function MapView({ trip, spots = [] }) {
   }, [spots]);
 
   const formattedAccommodations = useMemo(() => {
-    return (trip?.accommodations || []).map((a) => ({
-      ...a,
-      dateRange: formattedDates,
-    }));
-  }, [trip, formattedDates]);
+    return accommodations.map((a) => {
+      // Build date range array between start_date and end_date
+      const dRange = [];
+      if (a.start_date && a.end_date) {
+        const curr = new Date(a.start_date);
+        const end = new Date(a.end_date);
+        while (curr <= end) {
+          dRange.push(curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+          curr.setDate(curr.getDate() + 1);
+        }
+      }
+      return {
+        ...a,
+        dateRange: dRange.length > 0 ? dRange : formattedDates,
+      };
+    });
+  }, [accommodations, formattedDates]);
 
   const toggleCategory = (cat) => {
     setActiveCategories((prev) =>
@@ -381,50 +401,88 @@ export default function MapView({ trip, spots = [] }) {
       markersRef.current.push(marker);
     });
 
-    if (hasPoints && visibleSpots.length > 0) {
+    // Render accommodation marker
+    const activeAcc = relevantAccommodations.find((a) => a.id === effectiveActiveId);
+    if (activeAcc && activeAcc.latitude && activeAcc.longitude) {
+      hasPoints = true;
+      const accPos = { lat: activeAcc.latitude, lng: activeAcc.longitude };
+      bounds.extend(accPos);
+
+      const isAccSelected = activeAcc.id === selectedAccommodationId;
+
+      // SVG path matching Home icon from mockup
+      const homeSvgPath = "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z";
+      const accIcon = {
+        path: homeSvgPath,
+        fillColor: isAccSelected ? "#C98A2E" : "#1F2E35",
+        fillOpacity: 1,
+        strokeColor: "#FAF7F1",
+        strokeWeight: 1.5,
+        scale: 1.2,
+        anchor: new window.google.maps.Point(12, 12),
+      };
+
+      const accMarker = new window.google.maps.Marker({
+        position: accPos,
+        map,
+        title: `Accommodation: ${activeAcc.name}`,
+        icon: accIcon,
+        zIndex: 200,
+      });
+
+      accMarker.addListener("click", () => {
+        setSelectedAccommodationId(activeAcc.id === selectedAccommodationId ? null : activeAcc.id);
+        setSelectedSpotId(null);
+      });
+
+      markersRef.current.push(accMarker);
+    }
+    if (hasPoints) {
       map.fitBounds(bounds);
     }
-  }, [map, visibleSpots, selectedSpotId, hoveredSpotId, categoryColors]);
+  }, [map, visibleSpots, selectedSpotId, selectedAccommodationId, hoveredSpotId, categoryColors, relevantAccommodations, effectiveActiveId]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {/* Category Filter Pills */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "11px", color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginRight: "4px" }}>
-          Filter:
-        </span>
-        {allCategories.map((cat) => {
-          const isActive = activeCategories.includes(cat);
-          const color = categoryColors[cat] || "#2B6E6E";
-          return (
+      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", background: "#FFFFFF", padding: "12px 16px", borderRadius: "10px", border: "1px solid var(--color-border)" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "11px", color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginRight: "4px" }}>
+            Filter:
+          </span>
+          {allCategories.map((cat) => {
+            const isActive = activeCategories.includes(cat);
+            const color = categoryColors[cat] || "#2B6E6E";
+            return (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                style={{
+                  border: `1.5px solid ${color}`,
+                  background: isActive ? color : "#FFFFFF",
+                  color: isActive ? "#FFFFFF" : color,
+                  borderRadius: "8px",
+                  padding: "6px 12px",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {cat}
+              </button>
+            );
+          })}
+          {activeCategories.length > 0 && (
             <button
-              key={cat}
-              onClick={() => toggleCategory(cat)}
-              style={{
-                border: `1.5px solid ${color}`,
-                background: isActive ? color : "#FFFFFF",
-                color: isActive ? "#FFFFFF" : color,
-                borderRadius: "8px",
-                padding: "6px 12px",
-                fontFamily: "var(--font-inter), sans-serif",
-                fontSize: "12.5px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
+              onClick={() => setActiveCategories([])}
+              style={{ border: "none", background: "none", color: "var(--color-muted)", fontFamily: "var(--font-inter), sans-serif", fontSize: "12px", cursor: "pointer", textDecoration: "underline", marginLeft: "4px" }}
             >
-              {cat}
+              Clear filters
             </button>
-          );
-        })}
-        {activeCategories.length > 0 && (
-          <button
-            onClick={() => setActiveCategories([])}
-            style={{ border: "none", background: "none", color: "var(--color-muted)", fontFamily: "var(--font-inter), sans-serif", fontSize: "12px", cursor: "pointer", textDecoration: "underline", marginLeft: "4px" }}
-          >
-            Clear filters
-          </button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Map and Side List Layout */}
@@ -442,7 +500,199 @@ export default function MapView({ trip, spots = [] }) {
             }}
           />
 
-          {/* Floating Selected Spot Card Overlay */}
+          {/* Accommodation overlay — anchored to the map top-right */}
+          <div
+            style={{
+              position: "absolute",
+              top: "12px",
+              right: "12px",
+              zIndex: 6,
+              background: "#FAF7F1",
+              border: "1px solid #E4DDCE",
+              borderRadius: "10px",
+              padding: "10px 12px",
+              boxShadow: "0 2px 8px rgba(31,46,53,0.12)",
+              maxWidth: "220px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                fontFamily: "var(--font-ibm-plex-mono), monospace",
+                fontSize: "10px",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                color: "#8A8270",
+                marginBottom: "6px",
+              }}
+            >
+              <Home size={11} strokeWidth={2} />
+              Accommodation
+            </div>
+            <select
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{
+                width: "100%",
+                fontFamily: "var(--font-inter), sans-serif",
+                fontSize: "12.5px",
+                color: "#1F2E35",
+                border: "1px solid #E4DDCE",
+                borderRadius: "6px",
+                padding: "5px 7px",
+                marginBottom: "8px",
+                background: "#FFFFFF",
+              }}
+            >
+              {formattedDates.map((date, idx) => (
+                <option key={rawDates[idx]} value={date}>
+                  {date}
+                </option>
+              ))}
+            </select>
+
+            {relevantAccommodations.length === 0 && (
+              <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: "12px", color: "#A99F8B" }}>
+                No Accommodation set for {selectedDate}.
+              </div>
+            )}
+
+            {!hasOverlap && relevantAccommodations.length === 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  fontSize: "12.5px",
+                  fontWeight: 500,
+                  color: "#1F2E35",
+                }}
+              >
+                <Home size={12} strokeWidth={2} />
+                {relevantAccommodations[0].name}
+              </div>
+            )}
+
+            {hasOverlap && (
+              <div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-inter), sans-serif",
+                    fontSize: "11px",
+                    color: "#8A6017",
+                    marginBottom: "5px",
+                  }}
+                >
+                  2 overlap — set active:
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                  {relevantAccommodations.map((a) => {
+                    const active = a.id === effectiveActiveId;
+                    return (
+                      <button
+                        key={a.id}
+                        className="accom-chip"
+                        onClick={() => setActiveAccommodationId(a.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          fontFamily: "var(--font-inter), sans-serif",
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          padding: "5px 9px",
+                          borderRadius: "6px",
+                          border: `1.5px solid ${active ? "#1F2E35" : "#E4DDCE"}`,
+                          background: active ? "#1F2E35" : "#FFFFFF",
+                          color: active ? "#FAF7F1" : "#1F2E35",
+                          textAlign: "left",
+                        }}
+                      >
+                        <Home size={11} strokeWidth={2} />
+                        {a.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Floating Selected Accommodation Card Overlay */}
+          {selectedAccommodationId && (() => {
+            const acc = accommodations.find((a) => a.id === selectedAccommodationId);
+            if (!acc) return null;
+            return (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "16px",
+                  left: "16px",
+                  right: "16px",
+                  background: "#FFFFFF",
+                  border: "1.5px solid var(--color-ink)",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  zIndex: 10,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontFamily: "var(--font-fraunces), serif",
+                        fontWeight: 600,
+                        fontSize: "16px",
+                        color: "var(--color-ink)",
+                        marginBottom: "2px",
+                      }}
+                    >
+                      <Home size={16} color="var(--color-teal)" />
+                      {acc.name}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        fontFamily: "var(--font-ibm-plex-mono), monospace",
+                        fontSize: "10.5px",
+                        color: "#8A8270",
+                      }}
+                    >
+                      <MapPin size={10} strokeWidth={2} />
+                      {acc.address || "Address not provided"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedAccommodationId(null)}
+                    style={{ border: "none", background: "none", cursor: "pointer", color: "#8A8270", padding: 0 }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px", color: "var(--color-ink-muted)", marginTop: "4px" }}>
+                  <span style={{ fontWeight: 500 }}>Stay Dates:</span> {acc.start_date} → {acc.end_date}
+                  {acc.active && (
+                    <span style={{ background: "rgba(43, 110, 110, 0.15)", color: "var(--color-teal)", padding: "2px 6px", borderRadius: "4px", fontWeight: 600, fontSize: "11px" }}>
+                      Active
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           {selectedSpot && (
             <div
               style={{

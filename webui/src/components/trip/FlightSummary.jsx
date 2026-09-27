@@ -26,6 +26,7 @@ export default function FlightSummary({ trip, onEdit }) {
         padding: "18px 20px",
         marginBottom: "24px",
         boxShadow: "0 2px 8px rgba(31, 46, 53, 0.04)",
+        fontFamily: "var(--font-inter), sans-serif",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
@@ -44,7 +45,7 @@ export default function FlightSummary({ trip, onEdit }) {
           >
             <Plane size={15} />
           </div>
-          <h3 style={{ margin: 0, fontSize: "14.5px", fontWeight: 600, color: "var(--color-ink)" }}>
+          <h3 style={{ margin: 0, fontFamily: "var(--font-inter), sans-serif", fontSize: "15px", fontWeight: 600, color: "var(--color-ink)" }}>
             Flight Details
           </h3>
         </div>
