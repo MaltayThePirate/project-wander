@@ -1,0 +1,18 @@
+current directory: /Users/neil/Projects/project-wander/tripsapi/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+/Users/neil/.local/share/mise/installs/ruby/3.4.10/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /Users/neil/Projects/project-wander/tripsapi/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260927-2110-m84570 sitelibdir\=./.gem.20260927-2110-m84570 clean
+
+current directory: /Users/neil/Projects/project-wander/tripsapi/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260927-2110-m84570 sitelibdir\=./.gem.20260927-2110-m84570
+compiling cruby.c
+linking shared-object skiptrace/internal/cruby.bundle
+
+current directory: /Users/neil/Projects/project-wander/tripsapi/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260927-2110-m84570 sitelibdir\=./.gem.20260927-2110-m84570 install
+/usr/bin/install -c -m 0755 cruby.bundle ./.gem.20260927-2110-m84570/skiptrace/internal
+
+current directory: /Users/neil/Projects/project-wander/tripsapi/vendor/bundle/ruby/3.4.0/gems/bindex-0.8.1/ext/skiptrace
+make DESTDIR\= sitearchdir\=./.gem.20260927-2110-m84570 sitelibdir\=./.gem.20260927-2110-m84570 clean

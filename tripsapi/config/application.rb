@@ -24,5 +24,16 @@ module Tripsapi
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
     config.api_only = true 
+
+    # OmniAuth requires session and flash middleware even in API-only apps
+    config.middleware.use ActionDispatch::Session::CookieStore, key: '_tripsapi_session'
+    config.middleware.use ActionDispatch::Flash
+    config.middleware.use Rack::MethodOverride
+
+    config.session_store :cookie_store, key: "_tripsapi_session"
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use config.session_store, config.session_options
+
+
   end
 end
