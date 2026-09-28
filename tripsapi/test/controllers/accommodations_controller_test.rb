@@ -2,12 +2,14 @@ require "test_helper"
 
 class AccommodationsControllerTest < ActionDispatch::IntegrationTest
   setup do
+    @user = User.create!(name: "Alice", email: "alice@example.com")
     @trip = Trip.create!(name: "Kyoto Trip", start_date: "2026-11-01", end_date: "2026-11-10")
+    @trip.users << @user
   end
 
   test "should get index of accommodations" do
     @trip.accommodations.create!(name: "Hotel A", start_date: "2026-11-01", end_date: "2026-11-05")
-    get trip_accommodations_url(@trip), as: :json
+    get trip_accommodations_url(@trip), headers: auth_headers_for(@user), as: :json
     assert_response :success
     json = JSON.parse(response.body)
     assert_equal 1, json.length
@@ -19,7 +21,7 @@ class AccommodationsControllerTest < ActionDispatch::IntegrationTest
     @trip.accommodations.create!(name: "Hotel A", start_date: "2026-11-01", end_date: "2026-11-05")
     @trip.accommodations.create!(name: "Hotel B", start_date: "2026-11-04", end_date: "2026-11-08")
 
-    get trip_accommodations_url(@trip), as: :json
+    get trip_accommodations_url(@trip), headers: auth_headers_for(@user), as: :json
     assert_response :success
     json = JSON.parse(response.body)
     assert_equal 2, json.length
@@ -29,7 +31,7 @@ class AccommodationsControllerTest < ActionDispatch::IntegrationTest
 
   test "should create accommodation" do
     assert_difference("Accommodation.count") do
-      post trip_accommodations_url(@trip), params: {
+      post trip_accommodations_url(@trip), headers: auth_headers_for(@user), params: {
         accommodation: {
           name: "Ryokan Kyoto",
           address: "Gion Kyoto",
@@ -47,7 +49,7 @@ class AccommodationsControllerTest < ActionDispatch::IntegrationTest
 
   test "should update accommodation active and dates" do
     acc = @trip.accommodations.create!(name: "Ryokan Kyoto", start_date: "2026-11-01", end_date: "2026-11-05", active: false)
-    patch trip_accommodation_url(@trip, acc), params: {
+    patch trip_accommodation_url(@trip, acc), headers: auth_headers_for(@user), params: {
       accommodation: {
         active: true,
         name: "Ryokan Updated"
@@ -62,7 +64,7 @@ class AccommodationsControllerTest < ActionDispatch::IntegrationTest
   test "should destroy accommodation" do
     acc = @trip.accommodations.create!(name: "Ryokan Kyoto", start_date: "2026-11-01", end_date: "2026-11-05")
     assert_difference("Accommodation.count", -1) do
-      delete trip_accommodation_url(@trip, acc), as: :json
+      delete trip_accommodation_url(@trip, acc), headers: auth_headers_for(@user), as: :json
     end
     assert_response :no_content
   end
