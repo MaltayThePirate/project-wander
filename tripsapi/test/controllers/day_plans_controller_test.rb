@@ -21,7 +21,7 @@ class DayPlansControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get empty day plan when none exists" do
-    get "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02"
+    get "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", headers: auth_headers_for(@user)
     assert_response :success
     json = JSON.parse(response.body)
     assert_nil json["day_plan"]
@@ -29,11 +29,11 @@ class DayPlansControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index of day plans for member" do
-    put "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", params: {
+    put "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", headers: auth_headers_for(@user), params: {
       spots: [ { spot_id: @spot.id, rank: 0 } ]
     }, as: :json
 
-    get "/trips/#{@trip.id}/day-plans/#{@user.id}"
+    get "/trips/#{@trip.id}/day-plans/#{@user.id}", headers: auth_headers_for(@user)
     assert_response :success
     json = JSON.parse(response.body)
     assert_equal 1, json.length
@@ -42,7 +42,7 @@ class DayPlansControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should create or update day plan spots and ranking" do
-    put "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", params: {
+    put "/trips/#{@trip.id}/day-plans/#{@user.id}/2026-11-02", headers: auth_headers_for(@user), params: {
       spots: [
         { spot_id: @spot.id, rank: 0 }
       ]

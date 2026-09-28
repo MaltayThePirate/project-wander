@@ -5,7 +5,12 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  resources :trips, only: [ :create, :show, :update ] do
+  devise_for :users,
+    controllers: { omniauth_callbacks: "users/omniauth_callbacks" },
+    skip: [:registrations, :passwords],   # sessions no longer skipped
+    defaults: { format: :json }
+
+  resources :trips, only: [ :index, :create, :show, :update ] do
     resources :spots, only: [ :index, :create, :destroy ] do
       member do
         get :photo

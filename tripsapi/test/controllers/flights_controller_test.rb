@@ -8,14 +8,14 @@ class FlightsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get flight details when none created" do
-    get trip_flight_url(@trip), as: :json
+    get trip_flight_url(@trip), headers: auth_headers_for(@user), as: :json
     assert_response :success
     json = JSON.parse(response.body)
     assert_nil json["flight"]
   end
 
   test "should create and update flight details" do
-    post trip_flight_url(@trip), params: {
+    post trip_flight_url(@trip), headers: auth_headers_for(@user), params: {
       flight: {
         arrival_date: "2026-09-30T15:30:00Z",
         arrival_flight_number: "JL001",
@@ -34,7 +34,7 @@ class FlightsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "SFO", json["departure_destination"]
 
     # Update via PUT
-    put trip_flight_url(@trip), params: {
+    put trip_flight_url(@trip), headers: auth_headers_for(@user), params: {
       flight: {
         arrival_date: "2026-10-01T10:00:00Z",
         arrival_flight_number: "JL003",

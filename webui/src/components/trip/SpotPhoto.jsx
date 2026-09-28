@@ -7,7 +7,7 @@ export default function SpotPhoto({ spot, width = "100%", height = "140px" }) {
 
   return (
     <img
-      src={`${process.env.NEXT_PUBLIC_API_URL}/trips/${spot.trip_id}/spots/${spot.id}/photo`}
+      src={`/api/proxy/trips/${spot.trip_id}/spots/${spot.id}/photo`}
       alt={spot.name}
       onError={() => setFailed(true)}
       style={{

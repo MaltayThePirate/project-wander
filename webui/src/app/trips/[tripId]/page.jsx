@@ -19,6 +19,7 @@ import FlightSummary from "@/components/trip/FlightSummary";
 import AccommodationModal from "@/components/trip/AccommodationModal";
 import AccommodationSummary from "@/components/trip/AccommodationSummary";
 import SpotCard from "@/components/trip/SpotCard";
+import AddCategoryForm from "@/components/trip/AddCategoryForm";
 
 export default function TripHomePage() {
   const params = useParams();
