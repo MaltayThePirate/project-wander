@@ -33,3 +33,9 @@ User stories covering per-member flight details, accommodation date ranges, over
 - **Role:** Trip Planner
 - **FR Mapping:** FR-4
 - **Description:** As a Trip Planner, when two Accommodations overlap on the same date, I can manually pick which one is "active" for that date's map distance calculations.
+
+### R1-C-06: Import Flights from Airline Apps
+- **Status:** 📋 Backlog
+- **Role:** Trip Member
+- **FR Mapping:** FR-3a
+- **Description:** As a Trip Member, I want to import my flight details directly from an airline app or confirmation link/share, so I don't have to manually type in my flight number, airports, and departure/arrival times.

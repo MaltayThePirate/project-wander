@@ -80,3 +80,11 @@ gem "rack-cors"
 
 # Postgres GIS Adapter
 gem "activerecord-postgis-adapter"
+
+# Authentication
+gem "devise"
+gem "devise-jwt"
+gem "omniauth-google-oauth2"
+gem "omniauth-apple"
+gem "omniauth-rails_csrf_protection"
+

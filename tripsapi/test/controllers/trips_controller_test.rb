@@ -8,7 +8,7 @@ class TripsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should update trip dates and name" do
-    patch trip_url(@trip), params: {
+    patch trip_url(@trip), headers: auth_headers_for(@user), params: {
       trip: { name: "Updated Tokyo Trip", start_date: "2026-10-05", end_date: "2026-10-15" }
     }, as: :json
 
@@ -20,7 +20,7 @@ class TripsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should reject invalid trip dates where end_date < start_date" do
-    patch trip_url(@trip), params: {
+    patch trip_url(@trip), headers: auth_headers_for(@user), params: {
       trip: { start_date: "2026-10-15", end_date: "2026-10-10" }
     }, as: :json
 
@@ -45,7 +45,7 @@ class TripsControllerTest < ActionDispatch::IntegrationTest
     day_plan = DayPlan.create!(trip: @trip, user: @user, date: "2026-10-02")
     DayPlanSpot.create!(day_plan: day_plan, spot: spot, rank: 0)
 
-    patch trip_url(@trip), params: {
+    patch trip_url(@trip), headers: auth_headers_for(@user), params: {
       trip: { start_date: "2026-10-05", end_date: "2026-10-10" }
     }, as: :json
 

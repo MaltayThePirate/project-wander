@@ -23,7 +23,7 @@ class SpotsControllerTest < ActionDispatch::IntegrationTest
     )
 
     assert_difference("Spot.count", -1) do
-      delete trip_spot_url(@trip, spot), as: :json
+      delete trip_spot_url(@trip, spot), headers: auth_headers_for(@user), as: :json
     end
 
     assert_response :no_content
@@ -41,7 +41,7 @@ class SpotsControllerTest < ActionDispatch::IntegrationTest
     )
 
     assert_no_difference("Spot.count") do
-      delete trip_spot_url(@trip, spot), as: :json
+      delete trip_spot_url(@trip, spot), headers: auth_headers_for(@user), as: :json
     end
 
     assert_response :forbidden
@@ -62,7 +62,7 @@ class SpotsControllerTest < ActionDispatch::IntegrationTest
     DayPlanSpot.create!(day_plan: day_plan, spot: spot, rank: 0)
 
     assert_no_difference("Spot.count") do
-      delete trip_spot_url(@trip, spot), as: :json
+      delete trip_spot_url(@trip, spot), headers: auth_headers_for(@user), as: :json
     end
 
     assert_response :unprocessable_entity

@@ -1,4 +1,8 @@
 class TripsController < ApplicationController
+  def index
+    render json: current_user.trips.map { |t| trip_json(t) }
+  end
+
   def create
     trip = Trip.new(trip_params)
 

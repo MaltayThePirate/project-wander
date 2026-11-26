@@ -1,22 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import React from "react";
+import { useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, LayoutGrid, List as ListIcon, Map, Info, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { List as ListIcon, Map } from "lucide-react";
 import MapView from "@/components/trip/MapView";
-import DayPlanView from "@/components/trip/DayPlanView";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { formatShortDate } from "@/lib/format";
 
-import PageHeader from "@/components/layout/PageHeader";
-import AddMenuButton from "@/components/trip/AddMenuButton";
-import AddSpotForm from "@/components/trip/AddSpotForm";
 import EditTripModal from "@/components/trip/EditTripModal";
-import FlightModal from "@/components/trip/FlightModal";
-import FlightSummary from "@/components/trip/FlightSummary";
 import AccommodationModal from "@/components/trip/AccommodationModal";
+import FlightSummary from "@/components/trip/FlightSummary";
 import AccommodationSummary from "@/components/trip/AccommodationSummary";
 import SpotCard from "@/components/trip/SpotCard";
 
@@ -24,19 +18,19 @@ export default function TripHomePage() {
   const params = useParams();
   const tripId = params?.tripId;
 
-  const [activeTab, setActiveTab] = useState("spots"); // "spots", "flights"
-  const [search, setSearch] = useState("");
-  const [view, setView] = useState("grid"); // "grid", "list", "map"
-  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
-  const [emptyMenuOpen, setEmptyMenuOpen] = useState(false);
-  const [note, setNote] = useState(null);
-  const [showAddSpotForm, setShowAddSpotForm] = useState(false);
-  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+  const [view, setView] = useState("list"); // "list" | "map"
+  const [activeTab, setActiveTab] = useState("spots"); // "spots" | "flights" | "stays"
   const [showEditTripModal, setShowEditTripModal] = useState(false);
-  const [showFlightModal, setShowFlightModal] = useState(false);
   const [showAccommodationModal, setShowAccommodationModal] = useState(false);
 
+  // Quick-add Spot state
+  const [spotUrl, setSpotUrl] = useState("");
+  const [justAddedSpot, setJustAddedSpot] = useState(null);
+  const [addSpotError, setAddSpotError] = useState(null);
+  const spotInputRef = useRef(null);
+
   const queryClient = useQueryClient();
+
   const tripQuery = useQuery({
     queryKey: ["trip", tripId],
     queryFn: () => apiGet(`/trips/${tripId}`),
@@ -47,31 +41,60 @@ export default function TripHomePage() {
     queryFn: () => apiGet(`/trips/${tripId}/spots`),
   });
 
-  const handleSelect = (key, label) => {
-    setHeaderMenuOpen(false);
-    setEmptyMenuOpen(false);
-    if (key === "spot") {
-      setShowAddSpotForm(true);
-      return;
-    }
-    if (key === "category") {
-      setShowAddCategoryForm(true);
-      return;
-    }
-    if (key === "flight") {
-      setShowFlightModal(true);
-      return;
-    }
-    if (key === "accommodation") {
-      setShowAccommodationModal(true);
-      return;
-    }
-    setNote(label);
-  };
+  const categoriesQuery = useQuery({
+    queryKey: ["trip", tripId, "categories"],
+    queryFn: () => apiGet(`/trips/${tripId}/categories`),
+  });
+
+  const accommodationsQuery = useQuery({
+    queryKey: ["trip", tripId, "accommodations"],
+    queryFn: () => apiGet(`/trips/${tripId}/accommodations`),
+  });
+
+  const flightQuery = useQuery({
+    queryKey: ["trip", tripId, "flights"],
+    queryFn: () => apiGet(`/trips/${tripId}/flights`),
+  });
+
+  const addSpotMutation = useMutation({
+    mutationFn: (sourceUrl) =>
+      apiPost(`/trips/${tripId}/spots`, {
+        spot: { source_url: sourceUrl },
+      }),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["trip", tripId, "spots"] });
+      setSpotUrl("");
+      setAddSpotError(null);
+      setJustAddedSpot(created);
+    },
+    onError: (err) => {
+      setJustAddedSpot(null);
+      setAddSpotError(
+        err.message || "Couldn't read that link. Paste a Google or Apple Maps link for the place."
+      );
+    },
+  });
+
+  const undoSpotMutation = useMutation({
+    mutationFn: (spotId) => apiDelete(`/trips/${tripId}/spots/${spotId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trip", tripId, "spots"] });
+      setJustAddedSpot(null);
+    },
+  });
 
   if (tripQuery.isLoading || spotsQuery.isLoading) {
     return (
-      <div style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
+      <div
+        style={{
+          minHeight: "60vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "12px",
+        }}
+      >
         <div className="spinner" />
         <div className="eyebrow-label">Charting the route…</div>
       </div>
@@ -87,105 +110,131 @@ export default function TripHomePage() {
   }
 
   const trip = tripQuery.data;
+  const spots = spotsQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+  const accommodations = accommodationsQuery.data ?? [];
+  const flights = Array.isArray(flightQuery.data) ? flightQuery.data : [];
+  const flightsCount = flights.length;
 
   const dateRangeLabel = `${formatShortDate(trip.start_date)}–${formatShortDate(trip.end_date)}`;
-  const spots = spotsQuery.data ?? [];
-  const filteredSpots = spots.filter(
-    (spot) =>
-      search.trim() === "" ||
-      spot.name.toLowerCase().includes(search.toLowerCase()) ||
-      (spot.address || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const members = trip.members || (trip.owner ? [trip.owner] : [{ id: 1, name: "You" }]);
+
+  const handleQuickAddSpot = (e) => {
+    e.preventDefault();
+    if (!spotUrl.trim()) return;
+    addSpotMutation.mutate(spotUrl.trim());
+  };
 
   return (
-    <div style={{ padding: "28px 24px 60px" }}>
+    <div style={{ padding: "28px 24px 60px", fontFamily: "var(--font-inter), sans-serif" }}>
       <div style={{ maxWidth: "1040px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "20px" }}>
-          <div
-            onClick={() => setShowEditTripModal(true)}
-            className="eyebrow-label"
-            style={{
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              marginBottom: "4px",
-            }}
-            title="Click to edit trip dates"
-          >
-            {dateRangeLabel}
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
-            <h1
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            flexWrap: "wrap",
+            gap: "12px",
+            marginBottom: "16px",
+          }}
+        >
+          <div>
+            <div
               onClick={() => setShowEditTripModal(true)}
+              className="eyebrow-label"
+              title="Click to edit trip name or dates"
               style={{
-                fontFamily: "var(--font-fraunces), serif",
-                fontSize: "32px",
-                fontWeight: 600,
-                color: "var(--color-ink)",
-                margin: 0,
                 cursor: "pointer",
+                marginBottom: "4px",
               }}
-              title="Click to edit trip name"
             >
-              {trip.name}
-            </h1>
-
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <button
-                onClick={() => setActiveTab("spots")}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--color-border)",
-                  background: activeTab === "spots" ? "var(--color-ink)" : "#FFFFFF",
-                  color: activeTab === "spots" ? "var(--color-parchment)" : "var(--color-ink)",
-                  fontFamily: "var(--font-inter), sans-serif",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
-              >
-                Spot Planning
-              </button>
-              <button
-                onClick={() => setActiveTab("flights")}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--color-border)",
-                  background: activeTab === "flights" ? "var(--color-ink)" : "#FFFFFF",
-                  color: activeTab === "flights" ? "var(--color-parchment)" : "var(--color-ink)",
-                  fontFamily: "var(--font-inter), sans-serif",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
-              >
-                Flight Details
-              </button>
-              <button
-                onClick={() => setActiveTab("accommodations")}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--color-border)",
-                  background: activeTab === "accommodations" ? "var(--color-ink)" : "#FFFFFF",
-                  color: activeTab === "accommodations" ? "var(--color-parchment)" : "var(--color-ink)",
-                  fontFamily: "var(--font-inter), sans-serif",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
-              >
-                Accommodations
-              </button>
-              <AddMenuButton
-                isOpen={headerMenuOpen}
-                onToggleOpen={() => setHeaderMenuOpen((v) => !v)}
-                onSelect={handleSelect}
-              />
+              {trip.name} · {dateRangeLabel}
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <h1
+                style={{
+                  fontFamily: "var(--font-fraunces), serif",
+                  fontSize: "32px",
+                  fontWeight: 600,
+                  color: "var(--color-ink)",
+                  margin: 0,
+                }}
+              >
+                Plan
+              </h1>
+
+              {/* List / Map pivot toggle */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  background: "#FFFFFF",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "8px",
+                  padding: "3px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setView("list")}
+                  aria-label="List view"
+                  title="List view"
+                  style={{
+                    border: "none",
+                    borderRadius: "6px",
+                    background: view === "list" ? "var(--color-ink)" : "transparent",
+                    color: view === "list" ? "var(--color-parchment)" : "var(--color-muted)",
+                    padding: "6px 9px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <ListIcon size={15} strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("map")}
+                  aria-label="Map view"
+                  title="Map view"
+                  style={{
+                    border: "none",
+                    borderRadius: "6px",
+                    background: view === "map" ? "var(--color-ink)" : "transparent",
+                    color: view === "map" ? "var(--color-parchment)" : "var(--color-muted)",
+                    padding: "6px 9px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <Map size={15} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Member avatars */}
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            {members.map((m, idx) => (
+              <span
+                key={m.id || idx}
+                title={m.name || "Member"}
+                style={{
+                  width: "22px",
+                  height: "22px",
+                  borderRadius: "50%",
+                  background: idx === 0 ? "var(--color-ink)" : "#999",
+                  color: "#FFFFFF",
+                  fontSize: "11px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {(m.name || "N").charAt(0).toUpperCase()}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -193,226 +242,241 @@ export default function TripHomePage() {
           <EditTripModal trip={trip} onClose={() => setShowEditTripModal(false)} />
         )}
 
-        {showFlightModal && (
-          <FlightModal trip={trip} onClose={() => setShowFlightModal(false)} />
-        )}
-
         {showAccommodationModal && (
-          <AccommodationModal trip={trip} onClose={() => setShowAccommodationModal(false)} queryClient={queryClient} />
+          <AccommodationModal
+            trip={trip}
+            onClose={() => setShowAccommodationModal(false)}
+            queryClient={queryClient}
+          />
         )}
 
-        {showAddSpotForm && (
-          <div
-            onClick={() => setShowAddSpotForm(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(31, 46, 53, 0.4)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-              padding: "24px",
-            }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{ width: "100%", maxWidth: "420px" }}
-            >
-              <AddSpotForm tripId={tripId} onClose={() => setShowAddSpotForm(false)} />
-            </div>
+        {view === "map" ? (
+          <div style={{ marginTop: "16px" }}>
+            <MapView trip={trip} spots={spots} />
           </div>
-        )}
-
-        {showAddCategoryForm && (
-          <div
-            onClick={() => setShowAddCategoryForm(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(31, 46, 53, 0.4)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100,
-              padding: "24px",
-            }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{ width: "100%", maxWidth: "420px" }}
-            >
-              <AddCategoryForm tripId={tripId} onClose={() => setShowAddCategoryForm(false)} />
-            </div>
-          </div>
-        )}
-
-        {note && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: "8px",
-              background: "rgba(201, 138, 46, 0.05)",
-              border: "1px solid rgba(201, 138, 46, 0.2)",
-              borderRadius: "8px",
-              padding: "10px 14px",
-              marginBottom: "18px",
-              fontFamily: "var(--font-inter), sans-serif",
-              fontSize: "12.5px",
-              color: "#8A6017",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-              <Info size={14} strokeWidth={2} style={{ flexShrink: 0, marginTop: "1px" }} />
-              "{note}" doesn't have a screen yet — this is a placeholder for a flow that's still being designed.
-            </div>
-            <button
-              onClick={() => setNote(null)}
-              aria-label="Dismiss"
-              style={{ border: "none", background: "none", color: "#8A6017", cursor: "pointer", display: "flex", flexShrink: 0 }}
-            >
-              <X size={14} strokeWidth={2} />
-            </button>
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: "12px", marginBottom: "24px", alignItems: "center" }}>
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "#FFFFFF",
-              border: "1px solid var(--color-border)",
-              borderRadius: "8px",
-              padding: "9px 14px",
-            }}
-          >
-            <Search size={15} color="var(--color-muted)" strokeWidth={2} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Spots by name or address"
-              disabled
-              style={{
-                border: "none",
-                outline: "none",
-                fontFamily: "var(--font-inter), sans-serif",
-                fontSize: "13.5px",
-                color: "var(--color-ink)",
-                width: "100%",
-                background: "transparent",
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", background: "#FFFFFF", border: "1px solid var(--color-border)", borderRadius: "8px", padding: "3px" }}>
-            <button
-              onClick={() => setView("grid")}
-              aria-label="Grid view"
-              style={{
-                border: "none",
-                background: view === "grid" ? "var(--color-ink)" : "transparent",
-                color: view === "grid" ? "var(--color-parchment)" : "var(--color-muted)",
-                borderRadius: "6px",
-                padding: "7px 10px",
-                cursor: "pointer",
-                display: "flex",
-              }}
-            >
-              <LayoutGrid size={15} strokeWidth={2} />
-            </button>
-            <button
-              onClick={() => setView("list")}
-              aria-label="List view"
-              style={{
-                border: "none",
-                background: view === "list" ? "var(--color-ink)" : "transparent",
-                color: view === "list" ? "var(--color-parchment)" : "var(--color-muted)",
-                borderRadius: "6px",
-                padding: "7px 10px",
-                cursor: "pointer",
-                display: "flex",
-              }}
-            >
-              <ListIcon size={15} strokeWidth={2} />
-            </button>
-            <button
-              onClick={() => setView("map")}
-              aria-label="Map view"
-              style={{
-                border: "none",
-                background: view === "map" ? "var(--color-ink)" : "transparent",
-                color: view === "map" ? "var(--color-parchment)" : "var(--color-muted)",
-                borderRadius: "6px",
-                padding: "7px 10px",
-                cursor: "pointer",
-                display: "flex",
-              }}
-            >
-              <Map size={15} strokeWidth={2} />
-            </button>
-            <button
-              onClick={() => setView("day-plan")}
-              aria-label="Day plan view"
-              style={{
-                border: "none",
-                background: view === "day-plan" ? "var(--color-ink)" : "transparent",
-                color: view === "day-plan" ? "var(--color-parchment)" : "var(--color-muted)",
-                borderRadius: "6px",
-                padding: "7px 10px",
-                cursor: "pointer",
-                fontFamily: "var(--font-inter), sans-serif",
-                fontSize: "12px",
-                fontWeight: 600,
-              }}
-            >
-              Day Plan
-            </button>
-          </div>
-        </div>
-
-        {activeTab === "flights" ? (
-          <FlightSummary trip={trip} onEdit={() => setShowFlightModal(true)} />
-        ) : activeTab === "accommodations" ? (
-          <AccommodationSummary trip={trip} onEdit={() => setShowAccommodationModal(true)} queryClient={queryClient} />
-        ) : view === "day-plan" ? (
-          <DayPlanView trip={trip} />
-        ) : spots.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "70px 24px", border: "1.5px dashed var(--color-border)", borderRadius: "14px", background: "#FFFFFF" }}>
-            <div style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 600, fontSize: "20px", color: "var(--color-ink)", marginBottom: "8px" }}>
-              Your Trip is empty
-            </div>
-            <p style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: "13.5px", color: "var(--color-muted)", margin: "0 0 22px", maxWidth: "360px", marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
-              Start by adding a Spot, your flight details, or where you're staying.
-            </p>
-            <AddMenuButton
-              isOpen={emptyMenuOpen}
-              onToggleOpen={() => setEmptyMenuOpen((v) => !v)}
-              onSelect={handleSelect}
-              size="large"
-            />
-          </div>
-        ) : filteredSpots.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px 24px", color: "var(--color-muted)", fontFamily: "var(--font-inter), sans-serif", fontSize: "13.5px" }}>
-            No Spots match "{search}".
-          </div>
-        ) : view === "map" ? (
-          <MapView trip={trip} spots={filteredSpots} />
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: view === "grid" ? "repeat(auto-fill, minmax(270px, 1fr))" : "1fr",
-              gap: "12px",
-            }}
-          >
-            {filteredSpots.map((spot) => (
-              <SpotCard key={spot.id} spot={spot} view={view} />
-            ))}
-          </div>
+          <>
+            {/* 3-Tab Bar */}
+            <div
+              style={{
+                display: "flex",
+                gap: "4px",
+                borderBottom: "1.5px solid var(--color-border)",
+                margin: "14px 0",
+              }}
+            >
+              {[
+                { key: "spots", label: "Spots", count: spots.length },
+                { key: "flights", label: "Flights", count: flightsCount },
+                { key: "stays", label: "Stays", count: accommodations.length },
+              ].map((tab) => {
+                const isOn = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      borderBottom: isOn ? "3px solid var(--color-ink)" : "3px solid transparent",
+                      padding: "8px 16px",
+                      color: isOn ? "var(--color-ink)" : "var(--color-muted)",
+                      fontWeight: isOn ? 600 : 400,
+                      fontSize: "14px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {tab.label}{" "}
+                    <span style={{ color: "var(--color-muted)", fontWeight: 400 }}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeTab === "flights" ? (
+              <FlightSummary trip={trip} />
+            ) : activeTab === "stays" ? (
+              <AccommodationSummary
+                trip={trip}
+                onEdit={() => setShowAccommodationModal(true)}
+              />
+            ) : (
+              <div>
+                {/* Quick-add Spot bar */}
+                <form
+                  onSubmit={handleQuickAddSpot}
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                    marginBottom: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <input
+                    ref={spotInputRef}
+                    value={spotUrl}
+                    onChange={(e) => setSpotUrl(e.target.value)}
+                    placeholder="Paste a Google or Apple Maps link"
+                    style={{
+                      flex: 1,
+                      minWidth: "220px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "8px",
+                      padding: "9px 14px",
+                      fontSize: "13.5px",
+                      background: "#FFFFFF",
+                      color: "var(--color-ink)",
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={addSpotMutation.isPending}
+                    style={{
+                      border: "1px solid var(--color-ink)",
+                      borderRadius: "8px",
+                      padding: "9px 18px",
+                      background: "var(--color-ink)",
+                      color: "var(--color-parchment)",
+                      fontWeight: 600,
+                      fontSize: "13.5px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {addSpotMutation.isPending ? "Adding…" : "Add"}
+                  </button>
+                </form>
+
+                {/* Quick-add outcome feedback */}
+                {justAddedSpot && (
+                  <div
+                    style={{
+                      border: "1.5px solid var(--color-border)",
+                      borderRadius: "6px",
+                      padding: "8px 10px",
+                      marginBottom: "12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "10px",
+                      fontSize: "13.5px",
+                    }}
+                  >
+                    <span>
+                      <b>{justAddedSpot.name}</b>{" "}
+                      {justAddedSpot.address && (
+                        <span style={{ color: "var(--color-muted)", fontSize: "12px" }}>
+                          {justAddedSpot.address}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <button
+                        type="button"
+                        onClick={() => undoSpotMutation.mutate(justAddedSpot.id)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "var(--color-muted)",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Undo
+                      </button>
+                    </span>
+                  </div>
+                )}
+
+                {addSpotError && (
+                  <div
+                    style={{
+                      border: "1px solid var(--color-rust)",
+                      background: "rgba(180, 68, 46, 0.06)",
+                      color: "var(--color-rust)",
+                      borderRadius: "8px",
+                      padding: "10px 14px",
+                      marginBottom: "12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "10px",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <span>{addSpotError}</span>
+                    <span style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => spotInputRef.current?.focus()}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#a22",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      >
+                        Edit link
+                      </button>
+                      {" · "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddSpotError(null);
+                          setSpotUrl("");
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#a22",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  </div>
+                )}
+
+                {/* Spots Grid */}
+                {spots.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "40px 24px",
+                      border: "1.5px dashed var(--color-border)",
+                      borderRadius: "8px",
+                      color: "var(--color-muted)",
+                      fontSize: "13.5px",
+                    }}
+                  >
+                    No Spots yet. Paste a Google or Apple Maps link above to add your first Spot.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))",
+                      gap: "12px",
+                    }}
+                  >
+                    {spots.map((spot) => (
+                      <SpotCard
+                        key={spot.id}
+                        spot={spot}
+                        categories={categories}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
