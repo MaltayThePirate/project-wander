@@ -52,14 +52,15 @@ class SpotsController < ApplicationController
     spot = Trip.find(params[:trip_id]).spots.find(params[:id])
     return head :not_found if spot.photo_reference.blank?
 
-    uri = URI("https://maps.googleapis.com/maps/api/place/photo")
-    uri.query = URI.encode_www_form(
-      maxwidth: 400,
-      photo_reference: spot.photo_reference,
-      key: Rails.application.credentials.google_maps[:geocoding_api_key]
-    )
+    response = fetch_google_photo(spot.photo_reference)
 
-    response = Net::HTTP.get_response(uri)
+    if response.code == "400" && spot.source_provider == "google" && spot.source_url.present?
+      result = Geocoding::GoogleMaps.geocode(spot.source_url)
+      if result&.photo_reference.present?
+        spot.update(photo_reference: result.photo_reference)
+        response = fetch_google_photo(spot.photo_reference)
+      end
+    end
 
     if response.is_a?(Net::HTTPRedirection)
       # Google's Photo endpoint responds with a redirect to the actual image
@@ -68,10 +69,23 @@ class SpotsController < ApplicationController
     elsif response.is_a?(Net::HTTPSuccess)
       send_data response.body, type: response["content-type"], disposition: "inline"
     else
+      Rails.logger.warn("Google Place Photo failed (#{response.code}): #{response.body}")
       head :bad_gateway
     end
   rescue ActiveRecord::RecordNotFound
     head :not_found
+  end
+
+  def update
+    trip = Trip.find(params[:trip_id])
+    spot = trip.spots.find(params[:id])
+    if spot.update(spot_params.slice(:note, :category_ids))
+      render json: spot_json(spot)
+    else
+      render json: { errors: spot.errors.full_messages }, status: :unprocessable_entity
+    end
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Spot not found" }, status: :not_found
   end
 
   def destroy
@@ -93,6 +107,16 @@ class SpotsController < ApplicationController
   end
 
   private
+
+  def fetch_google_photo(photo_reference)
+    uri = URI("https://maps.googleapis.com/maps/api/place/photo")
+    uri.query = URI.encode_www_form(
+      maxwidth: 400,
+      photo_reference: photo_reference,
+      key: Rails.application.credentials.google_maps[:geocoding_api_key]
+    )
+    Net::HTTP.get_response(uri)
+  end
 
   def spot_params
     params.require(:spot).permit(:source_url, :note, category_ids: [])
