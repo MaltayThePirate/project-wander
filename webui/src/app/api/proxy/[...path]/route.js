@@ -9,6 +9,7 @@ async function forward(request, path) {
   const res = await fetch(targetUrl, {
     method: request.method,
     headers: {
+      "Content-Type": request.headers.get("content-type") || "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
     },
     body: ["GET", "HEAD"].includes(request.method) ? undefined : await request.text(),
