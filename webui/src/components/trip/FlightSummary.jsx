@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 import { formatShortDate } from "@/lib/format";
+import ClockTimePicker from "@/components/ui/ClockTimePicker";
 
 function formatDateTime(isoStr) {
   if (!isoStr) return "—";
@@ -17,12 +18,20 @@ function formatDateTime(isoStr) {
   return `${datePart}, ${timePart}`;
 }
 
-function toDatetimeLocalValue(isoStr) {
-  if (!isoStr) return "";
+function splitIsoDateTime(isoStr) {
+  if (!isoStr) return { date: "", clock: "" };
   const d = new Date(isoStr);
-  if (isNaN(d.getTime())) return "";
+  if (isNaN(d.getTime())) return { date: "", clock: "" };
   const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    clock: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+}
+
+function combineDateTime(dateStr, clockStr) {
+  if (!dateStr) return null;
+  return `${dateStr}T${clockStr || "12:00"}`;
 }
 
 function isOutsideTripWindow(isoStr, trip) {
@@ -39,8 +48,10 @@ export default function FlightSummary({ trip }) {
     flight_number: "",
     departure_airport: "",
     arrival_airport: "",
-    departure_time: "",
-    arrival_time: "",
+    departure_date: "",
+    departure_clock: "12:00",
+    arrival_date: "",
+    arrival_clock: "12:00",
   });
 
   const flightsQuery = useQuery({
@@ -84,19 +95,25 @@ export default function FlightSummary({ trip }) {
       flight_number: "",
       departure_airport: "",
       arrival_airport: "",
-      departure_time: "",
-      arrival_time: "",
+      departure_date: (trip.start_date || "").slice(0, 10),
+      departure_clock: "12:00",
+      arrival_date: (trip.start_date || "").slice(0, 10),
+      arrival_clock: "12:00",
     });
   };
 
   const openEdit = (flight) => {
+    const dep = splitIsoDateTime(flight.departure_time);
+    const arr = splitIsoDateTime(flight.arrival_time);
     setFormMode(flight.id);
     setFormState({
       flight_number: flight.flight_number || "",
       departure_airport: flight.departure_airport || "",
       arrival_airport: flight.arrival_airport || "",
-      departure_time: toDatetimeLocalValue(flight.departure_time),
-      arrival_time: toDatetimeLocalValue(flight.arrival_time),
+      departure_date: dep.date,
+      departure_clock: dep.clock || "12:00",
+      arrival_date: arr.date,
+      arrival_clock: arr.clock || "12:00",
     });
   };
 
@@ -106,8 +123,8 @@ export default function FlightSummary({ trip }) {
       flight_number: formState.flight_number.trim(),
       departure_airport: formState.departure_airport.trim().toUpperCase(),
       arrival_airport: formState.arrival_airport.trim().toUpperCase(),
-      departure_time: formState.departure_time || null,
-      arrival_time: formState.arrival_time || null,
+      departure_time: combineDateTime(formState.departure_date, formState.departure_clock),
+      arrival_time: combineDateTime(formState.arrival_date, formState.arrival_clock),
     });
   };
 
@@ -120,8 +137,8 @@ export default function FlightSummary({ trip }) {
 
   const tripWindowLabel = `${formatShortDate(trip.start_date)}–${formatShortDate(trip.end_date)}`;
   const formOutOfWindow =
-    isOutsideTripWindow(formState.departure_time, trip) ||
-    isOutsideTripWindow(formState.arrival_time, trip);
+    isOutsideTripWindow(formState.departure_date, trip) ||
+    isOutsideTripWindow(formState.arrival_date, trip);
 
   return (
     <div style={{ fontFamily: "var(--font-inter), sans-serif" }}>
@@ -188,93 +205,125 @@ export default function FlightSummary({ trip }) {
           <div style={{ fontSize: "12px", color: "var(--color-muted)", marginBottom: "10px" }}>
             {formMode === "add" ? "Add a flight" : "Edit flight"}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "flex-end" }}>
-            <div style={{ flex: 1, minWidth: "120px" }}>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
-                Flight number
-              </label>
-              <input
-                value={formState.flight_number}
-                onChange={(e) => setFormState((s) => ({ ...s, flight_number: e.target.value }))}
-                placeholder="UA 837"
-                style={{
-                  width: "100%",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  padding: "7px 10px",
-                  fontSize: "13px",
-                }}
-              />
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "flex-end" }}>
+              <div style={{ flex: 1, minWidth: "120px" }}>
+                <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
+                  Flight number
+                </label>
+                <input
+                  value={formState.flight_number}
+                  onChange={(e) => setFormState((s) => ({ ...s, flight_number: e.target.value }))}
+                  placeholder="UA 837"
+                  style={{
+                    width: "100%",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "6px",
+                    padding: "7px 10px",
+                    fontSize: "13px",
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: "90px" }}>
+                <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
+                  Departing Airport
+                </label>
+                <input
+                  value={formState.departure_airport}
+                  onChange={(e) => setFormState((s) => ({ ...s, departure_airport: e.target.value }))}
+                  placeholder="SEA"
+                  style={{
+                    width: "100%",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "6px",
+                    padding: "7px 10px",
+                    fontSize: "13px",
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: "90px" }}>
+                <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
+                  Arrival Airport
+                </label>
+                <input
+                  value={formState.arrival_airport}
+                  onChange={(e) => setFormState((s) => ({ ...s, arrival_airport: e.target.value }))}
+                  placeholder="HND"
+                  style={{
+                    width: "100%",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "6px",
+                    padding: "7px 10px",
+                    fontSize: "13px",
+                  }}
+                />
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: "90px" }}>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
-                Departing Airport
-              </label>
-              <input
-                value={formState.departure_airport}
-                onChange={(e) => setFormState((s) => ({ ...s, departure_airport: e.target.value }))}
-                placeholder="SEA"
-                style={{
-                  width: "100%",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  padding: "7px 10px",
-                  fontSize: "13px",
-                }}
-              />
+
+            {/* Departure & Arrival Time grouped so they wrap together cleanly */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              <div>
+                <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
+                  Departure Time
+                </label>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <input
+                    type="date"
+                    value={formState.departure_date}
+                    onChange={(e) => setFormState((s) => ({ ...s, departure_date: e.target.value }))}
+                    style={{
+                      flex: 1.2,
+                      minWidth: 0,
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "6px",
+                      padding: "6px 8px",
+                      fontSize: "13px",
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: "105px" }}>
+                    <ClockTimePicker
+                      value={formState.departure_clock}
+                      onChange={(clock) => setFormState((s) => ({ ...s, departure_clock: clock }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
+                  Arrival Time
+                </label>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <input
+                    type="date"
+                    value={formState.arrival_date}
+                    onChange={(e) => setFormState((s) => ({ ...s, arrival_date: e.target.value }))}
+                    style={{
+                      flex: 1.2,
+                      minWidth: 0,
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "6px",
+                      padding: "6px 8px",
+                      fontSize: "13px",
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: "105px" }}>
+                    <ClockTimePicker
+                      value={formState.arrival_clock}
+                      onChange={(clock) => setFormState((s) => ({ ...s, arrival_clock: clock }))}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: "90px" }}>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
-                Arrival Airport
-              </label>
-              <input
-                value={formState.arrival_airport}
-                onChange={(e) => setFormState((s) => ({ ...s, arrival_airport: e.target.value }))}
-                placeholder="HND"
-                style={{
-                  width: "100%",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  padding: "7px 10px",
-                  fontSize: "13px",
-                }}
-              />
-            </div>
-            <div style={{ flex: 1.4, minWidth: "180px" }}>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
-                Departure Time
-              </label>
-              <input
-                type="datetime-local"
-                value={formState.departure_time}
-                onChange={(e) => setFormState((s) => ({ ...s, departure_time: e.target.value }))}
-                style={{
-                  width: "100%",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  padding: "6px 10px",
-                  fontSize: "13px",
-                }}
-              />
-            </div>
-            <div style={{ flex: 1.4, minWidth: "180px" }}>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--color-muted)", marginBottom: "4px" }}>
-                Arrival Time
-              </label>
-              <input
-                type="datetime-local"
-                value={formState.arrival_time}
-                onChange={(e) => setFormState((s) => ({ ...s, arrival_time: e.target.value }))}
-                style={{
-                  width: "100%",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  padding: "6px 10px",
-                  fontSize: "13px",
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
+
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
               <button
                 type="button"
                 onClick={() => setFormMode(null)}
